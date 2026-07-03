@@ -445,7 +445,11 @@
   }
 
   function schedule() {
-    while (radioNextT < audioCtx.currentTime + 0.12) {
+    var now = audioCtx.currentTime;
+    /* If the context was suspended (tab hidden, deferred autostart), snap the
+       cursor forward so we never flood with a burst of past-due notes. */
+    if (radioNextT < now - 0.2) radioNextT = now + 0.03;
+    while (radioNextT < now + 0.12) {
       playStep(radioStep % 16, Math.floor(radioStep / 16), radioNextT);
       radioNextT += SPB;
       radioStep = (radioStep + 1) % 128;
@@ -483,7 +487,29 @@
     if (npTicker) npTicker.hidden = !on;
     store.set('aci_audio', on ? '1' : '0');
   }
-  if (audioBtn) audioBtn.addEventListener('click', function () { setAudio(!AE.on); });
+  if (audioBtn) audioBtn.addEventListener('click', function () {
+    audioWanted = !AE.on;
+    setAudio(audioWanted);
+  });
+
+  /* Radio ON at start. Browsers block audio until a user gesture, so we
+     prime it on the very first interaction (any pointer / key / touch,
+     including the boot-screen tap) unless the visitor turned it off before. */
+  var audioWanted = store.get('aci_audio') !== '0';
+  function primeAudio() {
+    if (audioWanted && !AE.on) setAudio(true);
+    window.removeEventListener('pointerdown', primeAudio);
+    window.removeEventListener('keydown', primeAudio);
+    window.removeEventListener('touchstart', primeAudio);
+  }
+  if (audioWanted) {
+    window.addEventListener('pointerdown', primeAudio, { once: false });
+    window.addEventListener('keydown', primeAudio, { once: false });
+    window.addEventListener('touchstart', primeAudio, { once: false });
+    /* Some engines allow a silent auto-attempt; try, and keep the gesture
+       primer as the guaranteed fallback. */
+    setTimeout(function () { if (audioWanted && !AE.on) setAudio(true); }, 400);
+  }
 
   document.addEventListener('visibilitychange', function () {
     if (!audioCtx) return;
@@ -613,7 +639,7 @@
      ============================================================ */
   var fleetSvg = $('#fleetMap');
   var mapActive = false;
-  if (fleetSvg && typeof WORLD_LAND !== 'undefined') (function () {
+  if (fleetSvg && typeof WORLD_COUNTRIES !== 'undefined') (function () {
     var NS = 'http://www.w3.org/2000/svg';
     var K = 1000 / 360;
     function X(lon) { return (lon + 180) * K; }
@@ -640,11 +666,36 @@
     el('path', { d: dReg, 'class': 'm-grat' }, grat);
     el('path', { d: dMain, 'class': 'm-grat-main' }, grat);
 
-    /* Land: glow pass (static filter), crisp pass, borders */
+    /* Land: coast glow, per-country interactive fills, crisp coast, borders */
     var landG = $('#mLandG');
-    el('path', { d: WORLD_LAND, 'class': 'm-landglow' }, landG);
-    el('path', { d: WORLD_LAND, 'class': 'm-land' }, landG);
+    el('path', { d: WORLD_COAST, 'class': 'm-landglow' }, landG);
+    var countriesG = el('g', { id: 'mCountries' }, landG);
+    WORLD_COUNTRIES.forEach(function (c) {
+      var p = el('path', { d: c.d, 'class': 'm-country' }, countriesG);
+      p.dataset.n = c.n;
+    });
+    el('path', { d: WORLD_COAST, 'class': 'm-coast' }, landG);
     el('path', { d: WORLD_BORDERS, 'class': 'm-borders' }, landG);
+
+    /* Country hover: neon-blue highlight + region readout */
+    var regionEl = $('#fleetRegion');
+    var REGION_DEFAULT = 'TRK CH-02 :: Fleet';
+    var litCountry = null;
+    countriesG.addEventListener('pointerover', function (e) {
+      var p = e.target.closest('.m-country');
+      if (p && regionEl) regionEl.textContent = 'Region: ' + p.dataset.n;
+    });
+    countriesG.addEventListener('pointerout', function () {
+      if (regionEl) regionEl.textContent = REGION_DEFAULT;
+    });
+    countriesG.addEventListener('click', function (e) {
+      var p = e.target.closest('.m-country');
+      if (!p) return;
+      if (litCountry && litCountry !== p) litCountry.classList.remove('lit');
+      p.classList.toggle('lit');
+      litCountry = p.classList.contains('lit') ? p : null;
+      if (regionEl) regionEl.textContent = 'Region: ' + p.dataset.n;
+    });
 
     /* Continent + ocean labels (the original site's exact set) */
     var LBL = [

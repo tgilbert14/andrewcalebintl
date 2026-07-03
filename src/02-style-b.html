@@ -83,21 +83,22 @@ html.rm .hero-h1 .glitch::before, html.rm .hero-h1 .glitch::after { animation: n
   letter-spacing: .28em;
   color: var(--osd-amber);
   text-transform: uppercase;
-  text-shadow: 2px 2px 0 rgba(0,0,0,.85);
+  text-shadow: 0 0 12px rgba(255,204,0,.85), 0 0 30px rgba(255,204,0,.4), 2px 2px 0 rgba(0,0,0,.85);
   padding: 6px 18px 4px;
-  border: 1px solid rgba(255,179,0,.5);
+  border: 1px solid rgba(255,204,0,.7);
   border-left-width: 6px;
   border-right-width: 6px;
   margin: 10px 0 20px;
-  background: rgba(10,6,20,.55);
+  background: rgba(18,2,48,.55);
+  box-shadow: 0 0 18px rgba(255,204,0,.2);
 }
 .hero-sub {
   max-width: 56ch;
   margin: 0 auto 34px;
-  color: rgba(233,237,245,.94);
+  color: #ffffff;
   font-size: clamp(1.02rem, 1.3vw, 1.15rem);
-  text-shadow: 0 2px 12px rgba(10,6,20,.9);
-  background: rgba(10,6,20,.48);
+  text-shadow: 0 2px 12px rgba(18,2,48,.9);
+  background: rgba(18,2,48,.5);
   padding: 10px 18px;
   border-radius: 4px;
 }
@@ -180,11 +181,12 @@ html.rm .hero-cue { animation: none; }
   font-size: clamp(1.5rem, 4vw, 2.5rem);
   letter-spacing: .06em;
   margin-bottom: 14px;
-  text-shadow: -2px 0 rgba(255,0,80,.5), 2px 0 rgba(0,255,255,.5);
+  color: #ffffff;
+  text-shadow: -2px 0 rgba(255,0,255,.75), 2px 0 rgba(0,242,255,.75), 0 0 22px rgba(255,0,255,.35);
   text-wrap: balance;
 }
 .section-kicker {
-  color: rgba(233,237,245,.65);
+  color: rgba(244,246,255,.9);
   max-width: 62ch;
   margin-bottom: 44px;
 }
@@ -219,9 +221,10 @@ html.rm .hero-cue { animation: none; }
   font-size: clamp(1.02rem, 1.5vw, 1.22rem);
   letter-spacing: .07em;
   margin-bottom: 8px;
-  color: var(--chrome);
+  color: #ffffff;
+  text-shadow: 0 0 14px color-mix(in srgb, var(--acc, #00f2ff) 55%, transparent);
 }
-.ethos-item p { color: rgba(233,237,245,.82); max-width: 44ch; }
+.ethos-item p { color: rgba(244,246,255,.95); max-width: 44ch; }
 .ethos-pull {
   font-family: var(--font-script);
   font-size: clamp(1.9rem, 4.4vw, 3rem);
@@ -244,8 +247,8 @@ html.rm .hero-cue { animation: none; }
   position: relative;
   aspect-ratio: 16 / 9;
   background:
-    radial-gradient(ellipse at 50% 120%, rgba(43,0,61,.75), transparent 60%),
-    #1a0430;
+    radial-gradient(ellipse at 50% 120%, rgba(131,23,209,.4), transparent 60%),
+    #2a0d52;
   border: 1px solid color-mix(in srgb, var(--acc, var(--neon-pink)) 40%, transparent);
   border-radius: 10px;
   overflow: clip;
@@ -296,12 +299,13 @@ html.rm .badge-live { animation: none; }
   font-weight: 400;
   font-size: clamp(1.02rem, 1.5vw, 1.28rem);
   letter-spacing: .08em;
-  color: var(--chrome);
+  color: #ffffff;
+  text-shadow: 0 0 12px color-mix(in srgb, var(--acc, #ff00ff) 55%, transparent);
   margin-bottom: 6px;
   text-transform: uppercase;
 }
 .monitor.featured .mon-title { font-size: clamp(1.2rem, 2vw, 1.6rem); }
-.mon-desc { color: rgba(233,237,245,.78); font-size: .95rem; max-width: 52ch; }
+.mon-desc { color: rgba(244,246,255,.95); font-size: .95rem; max-width: 52ch; }
 .monitor.nosignal {
   background: var(--void);
   justify-content: center; align-items: center; text-align: center;
@@ -325,7 +329,7 @@ html.rm .monitor.nosignal .staticbg { animation: none; }
   letter-spacing: .3em; color: rgba(233,237,245,.9);
   z-index: 1;
 }
-.monitor.nosignal .mon-desc { z-index: 1; font-family: var(--font-osd); font-size: 16px; letter-spacing: .1em; color: rgba(233,237,245,.6); text-transform: uppercase; }
+.monitor.nosignal .mon-desc { z-index: 1; font-family: var(--font-osd); font-size: 16px; letter-spacing: .1em; color: rgba(244,246,255,.85); text-transform: uppercase; }
 
 /* ============================================================
    CH 04 — THE OPERATOR
@@ -367,7 +371,7 @@ html.rm .monitor.nosignal .staticbg { animation: none; }
   font-size: 16px; color: var(--signal-cyan);
   letter-spacing: .2em;
 }
-.dossier p { margin-bottom: 16px; max-width: 58ch; color: rgba(233,237,245,.88); }
+.dossier p { margin-bottom: 16px; max-width: 58ch; color: rgba(244,246,255,.97); }
 .dossier .readout {
   margin: 28px 0;
   border: 1px solid rgba(255,204,0,.28);
@@ -401,7 +405,7 @@ html.rm .monitor.nosignal .staticbg { animation: none; }
 .contact-wrap { display: flex; justify-content: center; }
 .tape-card {
   width: min(660px, 100%);
-  background: linear-gradient(180deg, #31114a, #22093a);
+  background: linear-gradient(180deg, #4a1a75, #35105c);
   color: var(--chrome);
   border-radius: 8px;
   transform: rotate(-1.4deg);
@@ -522,7 +526,7 @@ html.rm .btn-rec .dot { animation: none; }
   transition: background-color .18s ease, box-shadow .18s ease;
 }
 .footer .rewind:hover { background: rgba(255,204,0,.1); box-shadow: 0 0 18px rgba(255,204,0,.3); }
-.footer p { color: rgba(233,237,245,.6); font-size: .92rem; margin-bottom: 6px; }
+.footer p { color: rgba(244,246,255,.85); font-size: .92rem; margin-bottom: 6px; }
 .footer .signoff {
   font-family: var(--font-osd);
   font-size: 20px; letter-spacing: .3em;
@@ -531,7 +535,7 @@ html.rm .btn-rec .dot { animation: none; }
   text-shadow: 0 0 12px rgba(255,61,166,.6);
   margin: 14px 0 10px;
 }
-.footer .legal { font-size: .8rem; color: rgba(233,237,245,.38); }
+.footer .legal { font-size: .8rem; color: rgba(244,246,255,.6); }
 
 /* ============================================================
    CH 02 — OPERATIONS FLEET TRACKER
@@ -592,8 +596,8 @@ html.rm .btn-rec .dot { animation: none; }
 #fleetTip .t3 { color: #ff7bff; display: block; }
 .fleet-log {
   margin: 18px 0 0;
-  border: 1px solid rgba(0,242,255,.25);
-  background: rgba(11,0,26,.5);
+  border: 1px solid rgba(0,242,255,.4);
+  background: rgba(26,5,64,.55);
   padding: 12px 16px 10px;
   font-family: var(--font-osd); font-size: 17px;
   letter-spacing: .06em; text-transform: uppercase;
@@ -609,23 +613,28 @@ html.rm .btn-rec .dot { animation: none; }
 .fleet-actions { display: flex; justify-content: center; margin-top: 28px; }
 
 /* Map SVG layers */
-.m-grat { fill: none; stroke: #00f2ff; stroke-width: .5; opacity: .07; }
-.m-grat-main { fill: none; stroke: #00f2ff; stroke-width: .5; opacity: .13; }
-.m-landglow { fill: none; stroke: #ff00ff; stroke-width: 2.5; opacity: .35; filter: url(#fGlow); }
-.m-land { fill: #14042b; stroke: #ff00ff; stroke-width: .8; stroke-opacity: .9; }
-.m-borders { fill: none; stroke: #00f2ff; stroke-width: .4; opacity: .18; }
-.m-label-cont { fill: #ffffff; opacity: .28; font-family: var(--font-osd); font-size: 15px; letter-spacing: 3px; }
-.m-label-ocean { fill: #00f2ff; opacity: .32; font-family: var(--font-osd); font-size: 13px; letter-spacing: 4px; }
-.m-route { fill: none; stroke-linecap: round; }
-.m-route.flt { stroke: #00f2ff; stroke-width: 1.2; stroke-dasharray: 6 7; opacity: .5; animation: dashflt 1.4s linear infinite; }
-.m-route.sea { stroke: #ffcc00; stroke-width: 1.2; stroke-dasharray: 2 6; opacity: .45; animation: dashsea 3s linear infinite; }
-.m-route.orb { stroke: #ffffff; stroke-width: 1; stroke-dasharray: 1 9; opacity: .3; animation: dashorb 4s linear infinite; }
+.m-grat { fill: none; stroke: #00f2ff; stroke-width: .5; opacity: .12; }
+.m-grat-main { fill: none; stroke: #00f2ff; stroke-width: .5; opacity: .22; }
+.m-landglow { fill: none; stroke: #ff00ff; stroke-width: 2.5; opacity: .5; filter: url(#fGlow); }
+.m-country { fill: #2a0d52; stroke: none; transition: fill .12s ease; }
+.m-country:hover, .m-country.lit {
+  fill: #19f7ff;
+  filter: drop-shadow(0 0 6px #00f2ff) drop-shadow(0 0 16px rgba(0,242,255,.7));
+}
+.m-coast { fill: none; stroke: #ff00ff; stroke-width: .8; opacity: .95; pointer-events: none; }
+.m-borders { fill: none; stroke: #00f2ff; stroke-width: .4; opacity: .32; pointer-events: none; }
+.m-label-cont { fill: #ffffff; opacity: .55; font-family: var(--font-osd); font-size: 15px; letter-spacing: 3px; pointer-events: none; }
+.m-label-ocean { fill: #00f2ff; opacity: .6; font-family: var(--font-osd); font-size: 13px; letter-spacing: 4px; pointer-events: none; }
+.m-route { fill: none; stroke-linecap: round; pointer-events: none; }
+.m-route.flt { stroke: #00f2ff; stroke-width: 1.2; stroke-dasharray: 6 7; opacity: .7; animation: dashflt 1.4s linear infinite; }
+.m-route.sea { stroke: #ffcc00; stroke-width: 1.2; stroke-dasharray: 2 6; opacity: .65; animation: dashsea 3s linear infinite; }
+.m-route.orb { stroke: #ffffff; stroke-width: 1; stroke-dasharray: 1 9; opacity: .45; animation: dashorb 4s linear infinite; }
 @keyframes dashflt { to { stroke-dashoffset: -26; } }
 @keyframes dashsea { to { stroke-dashoffset: -24; } }
 @keyframes dashorb { to { stroke-dashoffset: -20; } }
 .m-hub-core { fill: #ff00ff; }
 .m-hub-inner { fill: #ffffff; }
-.m-hub-label { fill: #ffffff; opacity: .85; font-family: var(--font-osd); font-size: 12px; letter-spacing: 1px; }
+.m-hub-label { fill: #ffffff; opacity: 1; font-family: var(--font-osd); font-size: 12px; letter-spacing: 1px; text-shadow: 0 0 6px rgba(0,242,255,.8); pointer-events: none; }
 .m-hub-hit { fill: transparent; cursor: pointer; pointer-events: all; }
 .m-ping {
   fill: none; stroke: #ff00ff; stroke-width: 1.5;
@@ -649,6 +658,7 @@ html.rm .btn-rec .dot { animation: none; }
 .m-vehicle { cursor: pointer; }
 .m-sweep { pointer-events: none; animation: sweep 12s linear infinite; }
 @keyframes sweep { from { transform: translateX(-70px); } to { transform: translateX(1070px); } }
+.m-cross { pointer-events: none; }
 .m-cross line { stroke: #00f2ff; opacity: 0; stroke-width: .7; transition: opacity .2s; }
 .fleet-frame.crossing .m-cross line { opacity: .35; }
 .fleet-frame.paused .m-route, .fleet-frame.paused .m-ping, .fleet-frame.paused .m-sweep { animation-play-state: paused; }

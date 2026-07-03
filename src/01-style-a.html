@@ -22,8 +22,8 @@
 }
 
 :root {
-  --void: #0b001a;
-  --night: #2b003d;
+  --void: #120230;
+  --night: #3a0f5e;
   --dusk: #6a00a8;
   --magenta-burn: #d4009f;
   --neon-pink: #ff00ff;
@@ -92,7 +92,7 @@ a:focus-visible, button:focus-visible {
   letter-spacing: .05em;
   color: var(--osd-amber);
   text-transform: uppercase;
-  text-shadow: 0 0 6px rgba(255,204,0,.55), 2px 2px 0 rgba(0,0,0,.85);
+  text-shadow: 0 0 10px rgba(255,204,0,.8), 0 0 22px rgba(255,204,0,.35), 2px 2px 0 rgba(0,0,0,.85);
   font-variant-numeric: tabular-nums;
 }
 
@@ -100,13 +100,13 @@ a:focus-visible, button:focus-visible {
 .chrome-text {
   font-family: var(--font-display);
   background: linear-gradient(180deg,
-    #FFFFFF 0%, #CFE9FF 28%, #7F8FB0 47%,
-    #FFFFFF 51%, #3D3357 55%, #FFD9F4 78%, #EEF4FF 100%);
+    #FFFFFF 0%, #DFF3FF 28%, #9FB0D8 47%,
+    #FFFFFF 51%, #5A4F82 55%, #FFE2F8 78%, #F6FAFF 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 0 2px rgba(0,242,255,.5))
-          drop-shadow(0 6px 18px rgba(255,0,255,.45));
+  filter: drop-shadow(0 0 3px rgba(0,242,255,.7))
+          drop-shadow(0 6px 20px rgba(255,0,255,.65));
 }
 
 /* ============================================================
@@ -115,27 +115,27 @@ a:focus-visible, button:focus-visible {
 .fx-scanlines {
   position: fixed; inset: 0; z-index: 9000; pointer-events: none;
   background:
-    repeating-linear-gradient(0deg, rgba(0,0,0,.14) 0 1px, transparent 1px 3px),
-    repeating-linear-gradient(90deg, rgba(255,0,80,.022) 0 1px, rgba(0,255,200,.022) 2px 3px);
+    repeating-linear-gradient(0deg, rgba(0,0,0,.06) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(255,0,80,.02) 0 1px, rgba(0,255,200,.02) 2px 3px);
 }
 .fx-vignette {
   position: fixed; inset: 0; z-index: 9010; pointer-events: none;
   border-radius: 26px / 20px;
-  background: radial-gradient(ellipse at center, transparent 56%, rgba(8,2,22,.52) 100%);
-  box-shadow: inset 0 0 140px rgba(0,0,0,.6);
+  background: radial-gradient(ellipse at center, transparent 64%, rgba(8,2,22,.26) 100%);
+  box-shadow: inset 0 0 80px rgba(0,0,0,.3);
 }
 .fx-flicker {
   position: fixed; inset: 0; z-index: 9020; pointer-events: none;
   background: rgba(6,2,16,1);
-  opacity: .05;
+  opacity: .02;
   animation: flick 5s steps(3, end) infinite;
 }
 @keyframes flick {
-  0%, 100% { opacity: .05; }
-  38% { opacity: .1; }
-  39% { opacity: .06; }
-  73% { opacity: .12; }
-  74% { opacity: .05; }
+  0%, 100% { opacity: .02; }
+  38% { opacity: .05; }
+  39% { opacity: .03; }
+  73% { opacity: .06; }
+  74% { opacity: .02; }
 }
 html.rm .fx-flicker { animation: none; }
 
@@ -364,9 +364,9 @@ html.rm .hud .np .np-inner { animation: none; padding-left: 0; }
 .tapenav a {
   font-family: var(--font-osd); font-size: 17px;
   letter-spacing: .12em; text-decoration: none;
-  color: rgba(233,237,245,.72);
+  color: rgba(244,246,255,.95);
   text-transform: uppercase;
-  text-shadow: 2px 2px 0 rgba(0,0,0,.85);
+  text-shadow: 0 0 8px rgba(0,242,255,.35), 2px 2px 0 rgba(0,0,0,.85);
   padding: 2px 2px 0;
 }
 .tapenav a:hover { color: var(--osd-amber); }
@@ -389,18 +389,18 @@ html.rm .hud .np .np-inner { animation: none; padding-left: 0; }
 .hero-sky {
   position: absolute; inset: 0; z-index: -4;
   background: linear-gradient(180deg,
-    #0b001a 0%, #2b003d 26%, #6a00a8 46%,
-    #d4009f 64%, #ff2d78 76%, #ff6a00 88%, #ffcc00 100%);
+    #120230 0%, #3a0f5e 24%, #8317d1 45%,
+    #e01bb4 63%, #ff3d8f 75%, #ff7a1f 87%, #ffd91f 100%);
 }
 .hero-stars {
   position: absolute; inset: 0 0 46% 0; z-index: -3;
   background-image:
-    radial-gradient(1px 1px at 22px 34px, rgba(233,237,245,.9), transparent 1px),
-    radial-gradient(1px 1px at 88px 112px, rgba(233,237,245,.6), transparent 1px),
-    radial-gradient(1.5px 1.5px at 160px 60px, rgba(43,240,230,.8), transparent 2px),
-    radial-gradient(1px 1px at 205px 150px, rgba(233,237,245,.75), transparent 1px),
-    radial-gradient(1px 1px at 120px 190px, rgba(255,61,166,.6), transparent 1px),
-    radial-gradient(1.5px 1.5px at 48px 210px, rgba(233,237,245,.5), transparent 2px);
+    radial-gradient(1px 1px at 22px 34px, rgba(255,255,255,1), transparent 1px),
+    radial-gradient(1px 1px at 88px 112px, rgba(255,255,255,.85), transparent 1px),
+    radial-gradient(1.5px 1.5px at 160px 60px, rgba(0,242,255,.95), transparent 2px),
+    radial-gradient(1px 1px at 205px 150px, rgba(255,255,255,.9), transparent 1px),
+    radial-gradient(1px 1px at 120px 190px, rgba(255,0,255,.85), transparent 1px),
+    radial-gradient(1.5px 1.5px at 48px 210px, rgba(255,255,255,.8), transparent 2px);
   background-size: 240px 240px;
   -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent);
   mask-image: linear-gradient(180deg, #000 55%, transparent);
@@ -433,8 +433,8 @@ html.rm .hud .np .np-inner { animation: none; padding-left: 0; }
 .hero-grid {
   position: absolute; inset: -60% -40% 0;
   background:
-    repeating-linear-gradient(90deg, rgba(255,0,255,.7) 0 2px, transparent 2px 84px),
-    repeating-linear-gradient(0deg, rgba(255,0,255,.6) 0 2px, transparent 2px 64px);
+    repeating-linear-gradient(90deg, rgba(255,64,255,.85) 0 2px, transparent 2px 84px),
+    repeating-linear-gradient(0deg, rgba(255,64,255,.75) 0 2px, transparent 2px 64px);
   transform: rotateX(61deg);
   transform-origin: 50% 0;
   animation: gridmove 1.5s linear infinite;
