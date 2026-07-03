@@ -1,0 +1,366 @@
+<a class="skip-link" href="#main">Skip to content</a>
+
+<!-- BOOT OVERLAY -->
+<button class="boot" id="boot" aria-label="Intro playing. Press to skip.">
+  <span class="play" aria-hidden="true">Play</span>
+  <span class="label">ACI &middot; Master Tape 001 &middot; Do Not Erase</span>
+  <span class="sub">SP &middot; Stereo Hi-Fi</span>
+  <span class="sub" id="bootStatus">Tracking...</span>
+  <span class="track" aria-hidden="true"></span>
+  <span class="hint">Hint: operators who know the code get the car.</span>
+  <span class="skip">Press any key / tap to skip</span>
+</button>
+
+<!-- FIXED FX LAYERS (decorative) -->
+<div class="fx-glow" aria-hidden="true"></div>
+<div class="fx-scanlines" aria-hidden="true"></div>
+<div class="fx-vignette" aria-hidden="true"></div>
+<div class="fx-flicker" aria-hidden="true"></div>
+<div class="fx-trackband" id="trackband" aria-hidden="true"></div>
+<canvas class="fx-static" id="staticfx" width="160" height="90" aria-hidden="true"></canvas>
+<div class="fx-chlabel" id="chlabel" aria-hidden="true">
+  <span class="num">CH 01</span>
+  <span class="name">SIGNAL</span>
+</div>
+<div class="fx-degauss" id="degauss" aria-hidden="true"></div>
+
+<!-- HUD -->
+<div class="hud" aria-hidden="true">
+  <div class="tl osd"><span class="playglyph"></span>PLAY&nbsp;&nbsp;<span id="hudCh">CH 01</span></div>
+  <div class="tr osd"><span class="sp">SP &middot; </span><span id="hudCounter">0:00:00</span></div>
+  <div class="bl osd" id="hudClock">--:--:--</div>
+  <div class="br osd">
+    <span class="np" id="npTicker" hidden><span class="np-inner" id="npText"></span></span>
+    <button class="audio-btn" id="audioBtn" aria-hidden="false" aria-pressed="false" aria-label="Toggle radio: ACI Skywave 99.9 FM">FM 99.9 [Tune]</button>
+    <span id="recWrap"><span class="recdot"></span>REC</span>
+  </div>
+  <div class="autotrack osd" id="autotrack">Auto Tracking</div>
+</div>
+
+<!-- NAV -->
+<nav class="tapenav" aria-label="Sections">
+  <a href="#top" data-ch="CH 01" data-name="SIGNAL" class="active">Top</a>
+  <a href="#fleet" data-ch="CH 02" data-name="FLEET TRACKER">Fleet</a>
+  <a href="#ethos" data-ch="CH 03" data-name="THE ETHOS">Ethos</a>
+  <a href="#channels" data-ch="CH 04" data-name="CHANNELS">Channels</a>
+  <a href="#operator" data-ch="CH 05" data-name="THE OPERATOR">Operator</a>
+  <a href="#contact" data-ch="CH 06" data-name="TRANSMISSION">Contact</a>
+</nav>
+
+<div class="page" id="page">
+<main id="main">
+<!-- ============ CH 01 : HERO ============ -->
+<header class="hero" id="top" data-ch="CH 01" data-name="SIGNAL" data-accent="#ff00ff">
+  <div class="hero-sky" aria-hidden="true"></div>
+  <div class="hero-stars" aria-hidden="true"></div>
+  <div class="hero-sun" aria-hidden="true"></div>
+  <div class="hero-horizon" aria-hidden="true"></div>
+  <div class="hero-gridwrap" aria-hidden="true"><div class="hero-grid"></div></div>
+
+  <div class="hero-palm left" aria-hidden="true">
+    <svg viewBox="0 0 220 320" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+      <path d="M98 320 C92 260 100 200 114 128 L126 132 C116 200 108 262 116 320 Z"/>
+      <path d="M120 126 C150 96 190 88 212 100 C182 102 152 116 128 138 Z"/>
+      <path d="M120 128 C156 122 196 132 214 154 C184 146 150 142 124 142 Z"/>
+      <path d="M122 132 C150 148 172 172 178 198 C158 176 136 158 118 146 Z"/>
+      <path d="M118 126 C92 92 56 82 30 92 C62 96 94 112 112 136 Z"/>
+      <path d="M118 128 C84 118 44 124 22 144 C54 138 90 140 114 142 Z"/>
+      <path d="M116 132 C92 150 72 176 68 202 C86 178 106 158 120 146 Z"/>
+      <path d="M119 124 C116 94 124 66 142 52 C132 76 130 102 126 128 Z"/>
+      <circle cx="112" cy="138" r="7"/>
+      <circle cx="128" cy="142" r="6"/>
+    </svg>
+  </div>
+  <div class="hero-palm right" aria-hidden="true">
+    <svg viewBox="0 0 220 320" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+      <path d="M98 320 C92 260 100 200 114 128 L126 132 C116 200 108 262 116 320 Z"/>
+      <path d="M120 126 C150 96 190 88 212 100 C182 102 152 116 128 138 Z"/>
+      <path d="M120 128 C156 122 196 132 214 154 C184 146 150 142 124 142 Z"/>
+      <path d="M122 132 C150 148 172 172 178 198 C158 176 136 158 118 146 Z"/>
+      <path d="M118 126 C92 92 56 82 30 92 C62 96 94 112 112 136 Z"/>
+      <path d="M118 128 C84 118 44 124 22 144 C54 138 90 140 114 142 Z"/>
+      <path d="M116 132 C92 150 72 176 68 202 C86 178 106 158 120 146 Z"/>
+      <path d="M119 124 C116 94 124 66 142 52 C132 76 130 102 126 128 Z"/>
+      <circle cx="112" cy="138" r="7"/>
+      <circle cx="128" cy="142" r="6"/>
+    </svg>
+  </div>
+
+  <div class="hero-content">
+    <p class="hero-eyebrow">An International Prospecting Company</p>
+    <h1 class="hero-h1">
+      <span class="glitch chrome-text" data-text="ANDREW CALEB">ANDREW CALEB</span>
+    </h1>
+    <p class="hero-script">International</p>
+    <p class="hero-tagline">Go Anywhere, Meet Anyone</p>
+    <p class="hero-sub">Markets, partners, properties, people: we find what you're looking for before the rest of the world knows it's available.</p>
+    <div class="hero-ctas">
+      <a class="btn btn-primary" href="#contact" data-ch="CH 06" data-name="TRANSMISSION">Make Contact</a>
+      <a class="btn btn-ghost" href="#fleet" data-ch="CH 02" data-name="FLEET TRACKER">Track the Fleet</a>
+    </div>
+  </div>
+  <div class="hero-cue" aria-hidden="true">&#9660; Cont. Play</div>
+</header>
+
+<!-- ============ CH 02 : OPERATIONS FLEET TRACKER ============ -->
+<section class="channel" id="fleet" data-ch="CH 02" data-name="FLEET TRACKER" data-accent="#00f2ff">
+  <span class="ch-tab">CH 02 &middot; Fleet Tracker</span>
+  <h2 class="section-title">Operations Fleet Tracker</h2>
+  <p class="fleet-script">every asset, every ocean, live</p>
+  <p class="section-kicker">Seven stations. Three oceans. One signal. The Andrew Caleb network never sleeps, and neither does this feed.</p>
+  <div class="fleet-wrap">
+    <div class="fleet-frame" id="fleetFrame">
+      <svg id="fleetMap" viewBox="0 0 1000 460" role="img" aria-label="World map of Andrew Caleb International operations: seven hubs with planes, boats, and a satellite moving between them">
+        <defs>
+          <radialGradient id="gOcean" cx="50%" cy="45%" r="75%">
+            <stop offset="0%" stop-color="#2b003d" stop-opacity=".65"/>
+            <stop offset="100%" stop-color="#2b003d" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="gSweep" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#00f2ff" stop-opacity="0"/>
+            <stop offset="85%" stop-color="#00f2ff" stop-opacity=".08"/>
+            <stop offset="100%" stop-color="#00f2ff" stop-opacity=".16"/>
+          </linearGradient>
+          <radialGradient id="gGlowC" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#00f2ff" stop-opacity=".5"/>
+            <stop offset="100%" stop-color="#00f2ff" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="gGlowY" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#ffcc00" stop-opacity=".5"/>
+            <stop offset="100%" stop-color="#ffcc00" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="gGlowW" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity=".5"/>
+            <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+          </radialGradient>
+          <filter id="fGlow" x="-8%" y="-8%" width="116%" height="116%">
+            <feGaussianBlur stdDeviation="2"/>
+          </filter>
+        </defs>
+        <rect width="1000" height="460" fill="#0b001a"/>
+        <rect width="1000" height="460" fill="url(#gOcean)"/>
+        <g id="mGrat"></g>
+        <g id="mLandG"></g>
+        <g id="mLabels"></g>
+        <g id="mRoutes"></g>
+        <g id="mHubs"></g>
+        <g id="mVehicles"></g>
+        <g class="m-cross" id="mCross" aria-hidden="true">
+          <line id="crossH" x1="0" y1="0" x2="1000" y2="0"/>
+          <line id="crossV" x1="0" y1="0" x2="0" y2="460"/>
+        </g>
+        <rect class="m-sweep" x="0" y="0" width="70" height="460" fill="url(#gSweep)" aria-hidden="true"/>
+      </svg>
+      <span class="tick tl2" aria-hidden="true"></span><span class="tick tr2" aria-hidden="true"></span>
+      <span class="tick bl2" aria-hidden="true"></span><span class="tick br2" aria-hidden="true"></span>
+      <div class="fleet-osd tl">Live Feed // Sat-Link 07</div>
+      <div class="fleet-osd tr" id="fleetCoords">LAT --.- | LON --.-</div>
+      <div class="fleet-osd bl">TRK CH-02 :: Fleet</div>
+      <div class="fleet-osd br" id="fleetUtc">UTC --:--:--</div>
+      <div id="fleetTip" hidden></div>
+    </div>
+  </div>
+  <div class="fleet-log" id="fleetLog" aria-label="Transmission log"></div>
+  <div class="fleet-actions">
+    <a class="btn btn-deploy" href="#contact" data-ch="CH 06" data-name="TRANSMISSION">Deploy Assets</a>
+  </div>
+</section>
+
+<!-- ============ CH 03 : ETHOS ============ -->
+<section class="channel" id="ethos" data-ch="CH 03" data-name="THE ETHOS" data-accent="#00f2ff">
+  <span class="ch-tab">CH 03 &middot; The Ethos</span>
+  <h2 class="section-title">How We Operate</h2>
+  <p class="section-kicker">Four rules. They have not changed, and they will not.</p>
+  <div class="ethos-grid">
+    <div class="ethos-item">
+      <span class="idx">Index 01</span>
+      <h3>The Map Isn't Finished</h3>
+      <p>Every market has an edge, and the edge is where we work.</p>
+    </div>
+    <div class="ethos-item">
+      <span class="idx">Index 02</span>
+      <h3>Doors Open for the Prepared</h3>
+      <p>We arrive already knowing the room, the players, and the price of hesitation.</p>
+    </div>
+    <div class="ethos-item">
+      <span class="idx">Index 03</span>
+      <h3>A Network Is a Compass</h3>
+      <p>The right introduction beats a thousand cold calls, so we deal only in the right introductions.</p>
+    </div>
+    <div class="ethos-item">
+      <span class="idx">Index 04</span>
+      <h3>Signal Over Noise</h3>
+      <p>We move quietly, we speak plainly, and we bring back only what matters.</p>
+    </div>
+  </div>
+  <p class="ethos-pull">The edge is where we work.</p>
+</section>
+
+<!-- ============ CH 04 : CHANNELS ============ -->
+<section class="channel" id="channels" data-ch="CH 04" data-name="CHANNELS" data-accent="#ffcc00">
+  <span class="ch-tab">CH 04 &middot; Channels</span>
+  <h2 class="section-title">Six Frequencies, One Network</h2>
+  <p class="section-kicker">Andrew Caleb International is the first broadcast, not the last. New ventures tune in here as they come online.</p>
+  <div class="monitors">
+    <article class="monitor featured" tabindex="0" style="--acc:#ffcc00">
+      <div class="mon-head"><span class="ch">CH 01</span><span class="badge badge-live">Now Playing</span></div>
+      <h3 class="mon-title" data-scramble>Prospecting International</h3>
+      <p class="mon-desc">First contact, ground truth, and open doors in markets most people only read about. We go. We look. We come back with names.</p>
+    </article>
+    <article class="monitor" tabindex="0" style="--acc:#ff00ff; --acc-text:#ff7bff">
+      <div class="mon-head"><span class="ch">CH 02</span><span class="badge badge-dev">In Development</span></div>
+      <h3 class="mon-title" data-scramble>The Exchange</h3>
+      <p class="mon-desc">Every deal needs a middle. We are building one.</p>
+    </article>
+    <article class="monitor" tabindex="0" style="--acc:#00f2ff">
+      <div class="mon-head"><span class="ch">CH 03</span><span class="badge badge-soon">Coming Soon</span></div>
+      <h3 class="mon-title" data-scramble>Far Horizons</h3>
+      <p class="mon-desc">Some ventures are still over the waterline. This one is closest.</p>
+    </article>
+    <article class="monitor" tabindex="0" style="--acc:#ff6a00">
+      <div class="mon-head"><span class="ch">CH 04</span><span class="badge badge-standby">Standby</span></div>
+      <h3 class="mon-title" data-scramble>Atlas Division</h3>
+      <p class="mon-desc">Mapping opportunity in places the index funds can't pronounce.</p>
+    </article>
+    <article class="monitor" tabindex="0" style="--acc:#b026ff; --acc-text:#c979ff">
+      <div class="mon-head"><span class="ch">CH 05</span><span class="badge badge-standby">Standby</span></div>
+      <h3 class="mon-title" data-scramble>Project Meridian</h3>
+      <p class="mon-desc">Details sealed until the tape is ready.</p>
+    </article>
+    <article class="monitor nosignal" tabindex="0" style="--acc:rgba(233,237,245,.5)">
+      <div class="staticbg" aria-hidden="true"></div>
+      <div class="mon-head"><span class="ch">CH 06</span><span class="badge badge-reserved">Reserved</span></div>
+      <h3 class="mon-title">No Signal</h3>
+      <p class="mon-desc">This frequency is being held. Check back.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ============ CH 05 : THE OPERATOR ============ -->
+<section class="channel" id="operator" data-ch="CH 05" data-name="THE OPERATOR" data-accent="#b026ff">
+  <span class="ch-tab">CH 05 &middot; The Operator</span>
+  <h2 class="section-title">The Man on the Ground</h2>
+  <div class="operator-grid">
+    <div class="feed" aria-label="Portrait feed, classified">
+      <span class="osd-top osd">&#9612;&#9612; Pause</span>
+      <svg class="silhouette" viewBox="0 0 200 250" xmlns="http://www.w3.org/2000/svg" fill="currentColor" aria-hidden="true">
+        <circle cx="100" cy="78" r="46"/>
+        <path d="M100 130 C56 130 24 162 16 214 L16 250 L184 250 L184 214 C176 162 144 130 100 130 Z"/>
+        <path d="M54 74 C58 40 80 22 100 22 C120 22 142 40 146 74 C146 52 128 30 100 30 C72 30 54 52 54 74 Z" opacity=".6"/>
+      </svg>
+      <span class="osd-classified osd">Portrait: Classified</span>
+      <span class="osd-bottom osd" id="feedStamp">JUL 03 2026</span>
+    </div>
+    <div class="dossier">
+      <p>Some people collect stamps in their passports. Andrew Caleb collects handshakes.</p>
+      <p>He is the call you make when the opportunity is real but the path to it isn't. The man who knows which flight, which floor, which chair to take at the table.</p>
+      <p>You tell him what you're looking for. He tells you where it is, who holds it, and what it will take. Then he goes and gets it.</p>
+      <div class="readout" aria-label="Operator status readout">
+        <div><span>Status:</span> <b>Active</b></div>
+        <div><span>Coverage:</span> <b>Worldwide</b></div>
+        <div><span>Location:</span> <b>[Redacted]</b></div>
+        <div><span>Next stop:</span> <b>Unlisted</b></div>
+      </div>
+      <div class="freeze">
+        <span class="pausebar">&#9612;&#9612; Freeze Frame</span>
+        <q>Everything is reachable. Most people just stop dialing.</q>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CH 06 : CONTACT ============ -->
+<section class="channel" id="contact" data-ch="CH 06" data-name="TRANSMISSION" data-accent="#ff6a00">
+  <span class="ch-tab">CH 06 &middot; Transmission</span>
+  <h2 class="section-title">The Line Is Open</h2>
+  <div class="contact-wrap">
+    <div class="tape-card">
+      <div class="strip"><span>Side B</span><span>Record your message after the tone</span></div>
+      <div class="inner">
+        <h3>Send Transmission</h3>
+        <div class="lines">
+          <p>Tell us where you want to go, or who you need to meet, and we will take it from there.</p>
+          <a class="email" href="mailto:contactandrewcalebintl@gmail.com">contactandrewcalebintl@gmail.com</a>
+        </div>
+        <div class="actions">
+          <a class="btn-rec" href="mailto:contactandrewcalebintl@gmail.com"><span class="dot" aria-hidden="true"></span>Press Rec</a>
+          <div class="barcode" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="tape-micro">All transmissions answered. No exceptions.</p>
+</section>
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="footer">
+  <p class="cheat">Cheat Code // <b>&#8593; &#8593; &#8595; &#8595; &#8592; &#8594; &#8592; &#8594; B A</b> // Type it anywhere. You did not hear it from us.</p>
+  <p class="cheat-sub">No keyboard? Tap the REC dot three times. Same result. Same deniability.</p>
+  <button class="rewind" id="rewBtn">&#9664;&#9664; Rew &middot; Back to Top</button>
+  <p>&copy; 2026 Andrew Caleb International. All rights reserved.</p>
+  <p class="signoff">Be Kind, Rewind.</p>
+  <p class="legal">Andrew Caleb International operates worldwide. Some ventures not available in all regions.</p>
+</footer>
+</div>
+
+<!-- ============ THE CAR (drive-by layer) ============ -->
+<div id="carLane" aria-hidden="true">
+  <div id="car">
+    <svg viewBox="-180 0 700 120" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="gRefl" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#ff00ff"/>
+          <stop offset="100%" stop-color="#00f2ff"/>
+        </linearGradient>
+        <linearGradient id="gCone" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#ffcc00" stop-opacity=".3"/>
+          <stop offset="100%" stop-color="#ffcc00" stop-opacity="0"/>
+        </linearGradient>
+        <linearGradient id="gStreak" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#ff00ff" stop-opacity="0"/>
+          <stop offset="100%" stop-color="#ff00ff" stop-opacity=".4"/>
+        </linearGradient>
+        <radialGradient id="gUg" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#00f2ff" stop-opacity=".55"/>
+          <stop offset="100%" stop-color="#00f2ff" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <ellipse class="car-underglow" cx="186" cy="100" rx="172" ry="9" fill="url(#gUg)"/>
+      <polygon points="348,52 520,36 520,84 350,66" fill="url(#gCone)"/>
+      <polygon points="-175,71 13,66 13,82 -175,77" fill="url(#gStreak)"/>
+      <line class="sl" x1="-24" y1="42" x2="-150" y2="42" stroke="#ffffff" stroke-width="2"/>
+      <line class="sl" x1="-10" y1="62" x2="-170" y2="62" stroke="#ffffff" stroke-width="2"/>
+      <line class="sl" x1="-30" y1="86" x2="-140" y2="86" stroke="#ffffff" stroke-width="2"/>
+      <path d="M12 50 L52 46 L52 51 L16 55 Z" fill="#f4f4ff"/>
+      <line x1="12" y1="55" x2="52" y2="51" stroke="#ff00ff" stroke-width="1.5"/>
+      <rect x="20" y="53" width="4" height="9" fill="#f4f4ff"/>
+      <rect x="40" y="50" width="4" height="10" fill="#f4f4ff"/>
+      <path d="M14 88 L20 60 Q22 55 30 54 L96 47 L128 36 Q133 33 140 33 L216 33 L292 44 L348 64 Q358 68 359 78 L359 88 Q359 93 352 93 L22 93 Q14 93 14 88 Z" fill="#f4f4ff"/>
+      <path d="M104 50 L130 39 L206 39 L206 50 Z" fill="#0b001a" stroke="#00f2ff" stroke-width="1"/>
+      <rect x="18" y="78" width="338" height="6" rx="2" fill="url(#gRefl)" opacity=".7"/>
+      <rect x="324" y="52" width="22" height="9" rx="2" fill="#f4f4ff" stroke="#b8c0d4" stroke-width="1"/>
+      <circle cx="341" cy="56.5" r="3.2" fill="#ffcc00"/>
+      <rect x="10" y="62" width="12" height="20" rx="3" fill="rgba(255,43,43,.35)"/>
+      <rect x="13" y="64" width="7" height="16" rx="2" fill="#ff2b2b"/>
+      <circle cx="84" cy="93" r="17" fill="#05000e" stroke="#2b003d" stroke-width="3.5"/>
+      <circle cx="288" cy="93" r="17" fill="#05000e" stroke="#2b003d" stroke-width="3.5"/>
+      <g transform="translate(84 93)"><g class="spokes" id="wRs">
+        <line x1="0" y1="0" x2="12" y2="0" stroke="#E9EDF5" stroke-width="1.6"/>
+        <line x1="0" y1="0" x2="3.7" y2="11.4" stroke="#E9EDF5" stroke-width="1.6"/>
+        <line x1="0" y1="0" x2="-9.7" y2="7.05" stroke="#E9EDF5" stroke-width="1.6"/>
+        <line x1="0" y1="0" x2="-9.7" y2="-7.05" stroke="#E9EDF5" stroke-width="1.6"/>
+        <line x1="0" y1="0" x2="3.7" y2="-11.4" stroke="#E9EDF5" stroke-width="1.6"/>
+        <circle cx="0" cy="0" r="4" fill="#9fb4d4"/>
+      </g></g>
+      <g transform="translate(288 93)"><g class="spokes" id="wFs">
+        <line x1="0" y1="0" x2="12" y2="0" stroke="#E9EDF5" stroke-width="1.6"/>
+        <line x1="0" y1="0" x2="3.7" y2="11.4" stroke="#E9EDF5" stroke-width="1.6"/>
+        <line x1="0" y1="0" x2="-9.7" y2="7.05" stroke="#E9EDF5" stroke-width="1.6"/>
+        <line x1="0" y1="0" x2="-9.7" y2="-7.05" stroke="#E9EDF5" stroke-width="1.6"/>
+        <line x1="0" y1="0" x2="3.7" y2="-11.4" stroke="#E9EDF5" stroke-width="1.6"/>
+        <circle cx="0" cy="0" r="4" fill="#9fb4d4"/>
+      </g></g>
+    </svg>
+  </div>
+</div>

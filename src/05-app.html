@@ -1,0 +1,968 @@
+<script>
+/*__MAPDATA__*/
+</script>
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- Environment ---------- */
+  var RM = false;
+  try { RM = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+  if (RM) document.documentElement.classList.add('rm');
+
+  var store = {
+    get: function (k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} }
+  };
+
+  var $ = function (s) { return document.querySelector(s); };
+  var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
+
+  /* Audio engine facade: filled in by the radio module below */
+  var AE = { on: false };
+
+  /* ---------- Shared ticker (single rAF loop) ---------- */
+  var tasks = [];
+  var rafId = null;
+  function loop(t) {
+    for (var i = tasks.length - 1; i >= 0; i--) {
+      if (tasks[i](t) === false) tasks.splice(i, 1);
+    }
+    rafId = tasks.length ? requestAnimationFrame(loop) : null;
+  }
+  function addTask(fn) {
+    tasks.push(fn);
+    if (rafId === null) rafId = requestAnimationFrame(loop);
+  }
+
+  /* ---------- Boot sequence ---------- */
+  var boot = $('#boot');
+  function dismissBoot() {
+    if (!boot || boot.classList.contains('out')) return;
+    boot.classList.add('out');
+    store.set('aci_boot', '1');
+    setTimeout(function () { if (boot.parentNode) boot.parentNode.removeChild(boot); boot = null; }, 420);
+    document.removeEventListener('keydown', dismissBoot);
+  }
+  if (boot) {
+    if (store.get('aci_boot')) {
+      boot.parentNode.removeChild(boot); boot = null;
+    } else {
+      var bootStatus = $('#bootStatus');
+      setTimeout(function () { if (bootStatus) bootStatus.textContent = 'Play'; }, 1100);
+      boot.addEventListener('pointerdown', dismissBoot);
+      document.addEventListener('keydown', dismissBoot);
+      setTimeout(dismissBoot, RM ? 1200 : 2400);
+    }
+  }
+
+  /* ---------- HUD clock + tape counter ---------- */
+  var hudClock = $('#hudClock');
+  var hudCounter = $('#hudCounter');
+  var feedStamp = $('#feedStamp');
+  var fleetUtc = $('#fleetUtc');
+  var t0 = Date.now();
+  var MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function tickClock() {
+    var d = new Date();
+    var h = d.getHours();
+    var ampm = h >= 12 ? 'PM' : 'AM';
+    var h12 = h % 12; if (h12 === 0) h12 = 12;
+    var stamp = MONTHS[d.getMonth()] + ' ' + pad(d.getDate()) + ' ' + d.getFullYear();
+    if (hudClock) hudClock.textContent = ampm + ' ' + pad(h12) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) + ' · ' + stamp;
+    if (feedStamp) feedStamp.textContent = stamp;
+    var el = Math.floor((Date.now() - t0) / 1000);
+    if (hudCounter) hudCounter.textContent = Math.floor(el / 3600) + ':' + pad(Math.floor(el / 60) % 60) + ':' + pad(el % 60);
+    if (fleetUtc) fleetUtc.textContent = 'UTC ' + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds());
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  /* ---------- Static burst (channel change) ---------- */
+  var staticC = $('#staticfx');
+  var chlabel = $('#chlabel');
+  var sctx = staticC ? staticC.getContext('2d') : null;
+  var fxLock = false;
+  function burst(ch, name, done) {
+    if (RM || !sctx || fxLock) { if (done) done(); return; }
+    fxLock = true;
+    if (AE.on && AE.blip) AE.blip();
+    staticC.classList.add('on');
+    if (chlabel) {
+      chlabel.querySelector('.num').textContent = ch;
+      chlabel.querySelector('.name').textContent = name;
+      chlabel.classList.add('on');
+    }
+    var start = performance.now();
+    var img = sctx.createImageData(160, 90);
+    var data = img.data;
+    addTask(function (t) {
+      for (var i = 0; i < data.length; i += 4) {
+        var v = (Math.random() * 255) | 0;
+        data[i] = v; data[i + 1] = v; data[i + 2] = v; data[i + 3] = 255;
+      }
+      sctx.putImageData(img, 0, 0);
+      if (t - start > 300) {
+        staticC.classList.remove('on');
+        if (chlabel) chlabel.classList.remove('on');
+        fxLock = false;
+        if (done) done();
+        return false;
+      }
+    });
+  }
+
+  /* ---------- Nav: channel-change on click, label swap on scroll ---------- */
+  var hudCh = $('#hudCh');
+  var navLinks = $$('.tapenav a');
+  $$('a[href^="#"][data-ch]').forEach(function (a) {
+    a.addEventListener('click', function (ev) {
+      var target = $(a.getAttribute('href'));
+      if (!target) return;
+      ev.preventDefault();
+      var go = function () {
+        target.scrollIntoView({ behavior: RM ? 'auto' : 'smooth', block: 'start' });
+        try { history.replaceState(null, '', a.getAttribute('href')); } catch (e) {}
+      };
+      burst(a.dataset.ch, a.dataset.name, null);
+      go();
+    });
+  });
+  try {
+    var navEl = $('.tapenav');
+    var chFlashT = null;
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        var ch = en.target.dataset.ch, name = en.target.dataset.name;
+        var acc = en.target.dataset.accent;
+        if (navEl && acc) navEl.style.setProperty('--nav-acc', acc);
+        if (hudCh && ch && hudCh.textContent !== ch) {
+          hudCh.textContent = ch;
+          if (acc) hudCh.style.setProperty('--nav-acc', acc);
+          hudCh.classList.add('flash');
+          clearTimeout(chFlashT);
+          chFlashT = setTimeout(function () { hudCh.classList.remove('flash'); }, 800);
+        }
+        navLinks.forEach(function (l) {
+          l.classList.toggle('active', l.dataset.ch === ch);
+        });
+      });
+    }, { threshold: 0.35 });
+    $$('[data-ch][id]').forEach(function (s) { io.observe(s); });
+  } catch (e) {}
+
+  /* ---------- Card title scramble ---------- */
+  var GLYPHS = '#$%&@/\\<>=+*';
+  $$('[data-scramble]').forEach(function (el) {
+    var real = el.textContent;
+    var busy = false;
+    function scramble() {
+      if (busy || RM) return;
+      busy = true;
+      var frame = 0, total = 11;
+      addTask(function () {
+        frame++;
+        var reveal = Math.floor((frame / total) * real.length);
+        var out = '';
+        for (var i = 0; i < real.length; i++) {
+          if (i < reveal || real[i] === ' ') out += real[i];
+          else out += GLYPHS[(Math.random() * GLYPHS.length) | 0];
+        }
+        el.textContent = out;
+        if (frame >= total) { el.textContent = real; busy = false; return false; }
+      });
+    }
+    var card = el.closest('.monitor') || el;
+    card.addEventListener('mouseenter', scramble);
+    card.addEventListener('focus', scramble);
+  });
+
+  /* ---------- Heavy tracking roll scheduler ---------- */
+  var band = $('#trackband');
+  var autotrack = $('#autotrack');
+  var page = $('#page');
+  function scheduleRoll() {
+    if (RM || !band) return;
+    setTimeout(function () {
+      if (!document.hidden && !fxLock) {
+        band.classList.remove('hm', 'hc', 'hy');
+        band.classList.add(['hm', 'hc', 'hy'][(Math.random() * 3) | 0]);
+        band.classList.add('heavy');
+        if (page) page.classList.add('hjitter');
+        if (autotrack) autotrack.classList.add('on');
+        setTimeout(function () {
+          band.classList.remove('heavy');
+          if (page) page.classList.remove('hjitter');
+          if (autotrack) autotrack.classList.remove('on');
+        }, 1700);
+      }
+      scheduleRoll();
+    }, 17000 + Math.random() * 21000);
+  }
+  scheduleRoll();
+
+  /* ---------- Pointer parallax (hero, fine pointers only) ---------- */
+  var hero = $('.hero');
+  try {
+    if (!RM && hero && matchMedia('(pointer: fine)').matches) {
+      var tx = 0, ty = 0, cx = 0, cy = 0, moving = false;
+      window.addEventListener('pointermove', function (e) {
+        tx = (e.clientX / innerWidth - 0.5) * 2;
+        ty = (e.clientY / innerHeight - 0.5) * 2;
+        if (!moving) {
+          moving = true;
+          addTask(function () {
+            cx += (tx - cx) * 0.06; cy += (ty - cy) * 0.06;
+            hero.style.setProperty('--px', cx.toFixed(3));
+            hero.style.setProperty('--py', cy.toFixed(3));
+            if (Math.abs(tx - cx) < 0.002 && Math.abs(ty - cy) < 0.002) { moving = false; return false; }
+          });
+        }
+      }, { passive: true });
+    }
+  } catch (e) {}
+
+  /* ============================================================
+     ACI SKYWAVE 99.9 FM — all synthesized in WebAudio, all original,
+     off by default. Music -> musicBus, effects -> sfxBus, both through
+     one compressor. Tape hiss sits underneath at 0.01.
+     ============================================================ */
+  var audioBtn = $('#audioBtn');
+  var npTicker = $('#npTicker'), npText = $('#npText');
+  var audioCtx = null, masterGain = null, comp = null, musicBus = null, sfxBus = null, delaySend = null;
+  var noiseBuf = null;
+  var radioTimer = null, radioStep = 0, radioNextT = 0;
+  var trackIdx = 0, trackTimer = null;
+
+  var NOTE_IDX = { 'C': 0, 'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5, 'F#': 6, 'G': 7, 'G#': 8, 'A': 9, 'A#': 10, 'B': 11 };
+  function freq(n) {
+    var m = /^([A-G]#?)(\d)$/.exec(n);
+    return 440 * Math.pow(2, ((NOTE_IDX[m[1]] + (parseInt(m[2], 10) + 1) * 12) - 69) / 12);
+  }
+
+  var BPM = 102, SPB = 60 / BPM / 4; /* seconds per 16th */
+  var CHORDS = [
+    { name: 'Am7', pad: ['A2', 'G3', 'C4', 'E4'], root: 'A1' },
+    { name: 'Am7', pad: ['A2', 'G3', 'C4', 'E4'], root: 'A1' },
+    { name: 'Fmaj7', pad: ['F2', 'A3', 'C4', 'E4'], root: 'F1' },
+    { name: 'Fmaj7', pad: ['F2', 'A3', 'C4', 'E4'], root: 'F1' },
+    { name: 'Cmaj7', pad: ['C3', 'G3', 'B3', 'E4'], root: 'C2' },
+    { name: 'Cmaj7', pad: ['C3', 'G3', 'B3', 'E4'], root: 'C2' },
+    { name: 'Gadd9', pad: ['G2', 'B3', 'D4', 'A4'], root: 'G1' },
+    { name: 'Gadd9', pad: ['G2', 'B3', 'D4', 'A4'], root: 'G1' }
+  ];
+  var KICK = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0];
+  var SNARE = [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0];
+  var HAT = [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 2, 0];
+  var BASS = [0, 2, 4, 6, 8, 10, 12, 14]; /* steps; even index = root, odd = octave up */
+  var ARP = {
+    'Am7': ['A4', 'C5', 'E5', 'G5', 'A5', 'G5', 'E5', 'C5'],
+    'Fmaj7': ['F4', 'A4', 'C5', 'E5', 'F5', 'E5', 'C5', 'A4'],
+    'Cmaj7': ['C4', 'E4', 'G4', 'B4', 'C5', 'B4', 'G4', 'E4'],
+    'Gadd9': ['G4', 'A4', 'B4', 'D5', 'G5', 'D5', 'B4', 'A4']
+  };
+  var MELODY = [ /* original sparkle riff, bars 7-8 (0-indexed 6-7) */
+    { bar: 6, step: 0, note: 'B4', len: 3 }, { bar: 6, step: 4, note: 'D5', len: 2 },
+    { bar: 6, step: 8, note: 'G5', len: 3 }, { bar: 6, step: 12, note: 'A5', len: 2 }, { bar: 6, step: 14, note: 'G5', len: 2 },
+    { bar: 7, step: 0, note: 'E5', len: 4 }, { bar: 7, step: 6, note: 'D5', len: 2 }, { bar: 7, step: 8, note: 'C5', len: 2 },
+    { bar: 7, step: 10, note: 'B4', len: 2 }, { bar: 7, step: 12, note: 'A4', len: 4 }
+  ];
+  var TRACKS = [
+    '"Chrome Horizon" · Vela Nova',
+    '"Customs After Dark" · The Passport Club',
+    '"Tradewind Runner" · Lena Meridian',
+    '"Open Water Drive" · Konvoy 86'
+  ];
+
+  function buildAudio() {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+    audioCtx = new AC();
+    masterGain = audioCtx.createGain(); masterGain.gain.value = 0.12;
+    masterGain.connect(audioCtx.destination);
+    comp = audioCtx.createDynamicsCompressor();
+    comp.threshold.value = -20; comp.knee.value = 15; comp.ratio.value = 4;
+    comp.attack.value = 0.004; comp.release.value = 0.25;
+    comp.connect(masterGain);
+    musicBus = audioCtx.createGain(); musicBus.gain.value = 0.0001; musicBus.connect(comp);
+    sfxBus = audioCtx.createGain(); sfxBus.gain.value = 0.7; sfxBus.connect(comp);
+
+    /* tempo-synced dotted-8th feedback delay for arp + lead */
+    delaySend = audioCtx.createGain(); delaySend.gain.value = 1;
+    var dly = audioCtx.createDelay(1); dly.delayTime.value = SPB * 3;
+    var fbHp = audioCtx.createBiquadFilter(); fbHp.type = 'highpass'; fbHp.frequency.value = 500;
+    var fb = audioCtx.createGain(); fb.gain.value = 0.35;
+    delaySend.connect(dly); dly.connect(fbHp); fbHp.connect(fb); fb.connect(dly);
+    var wet = audioCtx.createGain(); wet.gain.value = 0.3;
+    dly.connect(wet); wet.connect(musicBus);
+
+    /* shared noise buffer (drums, sfx) */
+    var nlen = audioCtx.sampleRate;
+    noiseBuf = audioCtx.createBuffer(1, nlen, audioCtx.sampleRate);
+    var nch = noiseBuf.getChannelData(0);
+    for (var i = 0; i < nlen; i++) nch[i] = Math.random() * 2 - 1;
+
+    /* tape hiss floor */
+    var hlen = 2 * audioCtx.sampleRate;
+    var hbuf = audioCtx.createBuffer(1, hlen, audioCtx.sampleRate);
+    var hch = hbuf.getChannelData(0);
+    for (var j = 0; j < hlen; j++) hch[j] = Math.random() * 2 - 1;
+    var hiss = audioCtx.createBufferSource(); hiss.buffer = hbuf; hiss.loop = true;
+    var hf = audioCtx.createBiquadFilter(); hf.type = 'lowpass'; hf.frequency.value = 6000;
+    var hg = audioCtx.createGain(); hg.gain.value = 0.01;
+    hiss.connect(hf); hf.connect(hg); hg.connect(comp);
+    hiss.start();
+    return true;
+  }
+
+  function noiseVoice(t, dur, filterType, cutoff, q, peak, dest) {
+    var src = audioCtx.createBufferSource(); src.buffer = noiseBuf;
+    var f = audioCtx.createBiquadFilter(); f.type = filterType; f.frequency.value = cutoff; f.Q.value = q || 0.7;
+    var g = audioCtx.createGain();
+    g.gain.setValueAtTime(peak, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    src.connect(f); f.connect(g); g.connect(dest || musicBus);
+    src.start(t); src.stop(t + dur + 0.02);
+  }
+  function vKick(t) {
+    var o = audioCtx.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(150, t);
+    o.frequency.exponentialRampToValueAtTime(45, t + 0.09);
+    var g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.85, t + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+    o.connect(g); g.connect(musicBus);
+    o.start(t); o.stop(t + 0.22);
+  }
+  function vSnare(t) {
+    noiseVoice(t, 0.12, 'highpass', 1800, 0.7, 0.5, musicBus);
+    var o = audioCtx.createOscillator(); o.type = 'triangle'; o.frequency.value = 190;
+    var g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.3, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+    o.connect(g); g.connect(musicBus);
+    o.start(t); o.stop(t + 0.1);
+  }
+  function vHat(t, open) {
+    noiseVoice(t, open ? 0.25 : 0.035, 'highpass', 7000, 0.7, open ? 0.22 : 0.18, musicBus);
+  }
+  function vBass(t, f, len) {
+    var o1 = audioCtx.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = f;
+    var o2 = audioCtx.createOscillator(); o2.type = 'square'; o2.frequency.value = f / 2;
+    var g2 = audioCtx.createGain(); g2.gain.value = 0.4;
+    var lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 1.2;
+    lp.frequency.setValueAtTime(1150, t);
+    lp.frequency.exponentialRampToValueAtTime(650, t + 0.08);
+    var g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.45, t + 0.004);
+    g.gain.linearRampToValueAtTime(0.45 * 0.55, t + 0.1);
+    g.gain.setValueAtTime(0.45 * 0.55, t + len);
+    g.gain.linearRampToValueAtTime(0.0001, t + len + 0.05);
+    o1.connect(lp); o2.connect(g2); g2.connect(lp);
+    lp.connect(g); g.connect(musicBus);
+    o1.start(t); o2.start(t);
+    o1.stop(t + len + 0.1); o2.stop(t + len + 0.1);
+  }
+  function vPad(t, notes, len) {
+    var lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1100; lp.Q.value = 0.6;
+    var g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.28, t + 0.8);
+    g.gain.linearRampToValueAtTime(0.28 * 0.8, t + 1.3);
+    g.gain.setValueAtTime(0.28 * 0.8, t + len - 0.2);
+    g.gain.linearRampToValueAtTime(0.0001, t + len + 1.5);
+    lp.connect(g); g.connect(musicBus);
+    notes.forEach(function (n) {
+      var f = freq(n);
+      [['sawtooth', -7], ['sawtooth', 7], ['triangle', 0]].forEach(function (spec) {
+        var o = audioCtx.createOscillator();
+        o.type = spec[0]; o.frequency.value = f; o.detune.value = spec[1];
+        var og = audioCtx.createGain(); og.gain.value = 1 / (notes.length * 2.4);
+        o.connect(og); og.connect(lp);
+        o.start(t); o.stop(t + len + 1.6);
+      });
+    });
+  }
+  function vArp(t, f) {
+    var o = audioCtx.createOscillator(); o.type = 'square'; o.frequency.value = f;
+    var lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2500; lp.Q.value = 1;
+    var g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.16, t + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    o.connect(lp); lp.connect(g); g.connect(musicBus);
+    var send = audioCtx.createGain(); send.gain.value = 0.3;
+    g.connect(send); send.connect(delaySend);
+    o.start(t); o.stop(t + 0.18);
+  }
+  function vLead(t, f, len) {
+    var g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.3, t + 0.01);
+    g.gain.linearRampToValueAtTime(0.3 * 0.6, t + 0.21);
+    g.gain.setValueAtTime(0.3 * 0.6, t + len);
+    g.gain.linearRampToValueAtTime(0.0001, t + len + 0.25);
+    var lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3200;
+    lp.connect(g); g.connect(musicBus);
+    var send = audioCtx.createGain(); send.gain.value = 0.5;
+    g.connect(send); send.connect(delaySend);
+    var lfo = audioCtx.createOscillator(); lfo.frequency.value = 5.5;
+    var lfoG = audioCtx.createGain(); lfoG.gain.setValueAtTime(0, t);
+    lfoG.gain.setValueAtTime(0, t + 0.15);
+    lfoG.gain.linearRampToValueAtTime(6, t + 0.3);
+    lfo.connect(lfoG);
+    [['sawtooth', 0], ['triangle', 4]].forEach(function (spec) {
+      var o = audioCtx.createOscillator();
+      o.type = spec[0]; o.frequency.value = f; o.detune.value = spec[1];
+      lfoG.connect(o.detune);
+      o.connect(lp);
+      o.start(t); o.stop(t + len + 0.3);
+    });
+    lfo.start(t); lfo.stop(t + len + 0.3);
+  }
+
+  function playStep(sIB, bar, t) {
+    if (KICK[sIB]) vKick(t);
+    if (SNARE[sIB]) vSnare(t);
+    if (HAT[sIB]) vHat(t, HAT[sIB] === 2);
+    var chord = CHORDS[bar];
+    var bi = BASS.indexOf(sIB);
+    if (bi !== -1) {
+      var f = freq(chord.root) * (bi % 2 ? 2 : 1);
+      vBass(t, f, SPB * 1.8);
+    }
+    if (bar === 7 && sIB === 15) vBass(t, freq(chord.root) * Math.pow(2, 5 / 12), SPB * 0.9);
+    if (bar % 2 === 0 && sIB === 0) vPad(t, chord.pad, SPB * 32);
+    vArp(t, freq(ARP[chord.name][sIB % 8]));
+    for (var i = 0; i < MELODY.length; i++) {
+      var m = MELODY[i];
+      if (m.bar === bar && m.step === sIB) vLead(t, freq(m.note), m.len * SPB);
+    }
+  }
+
+  function schedule() {
+    while (radioNextT < audioCtx.currentTime + 0.12) {
+      playStep(radioStep % 16, Math.floor(radioStep / 16), radioNextT);
+      radioNextT += SPB;
+      radioStep = (radioStep + 1) % 128;
+    }
+  }
+  function npUpdate() {
+    if (npText) npText.textContent = 'NOW PLAYING: ' + TRACKS[trackIdx] + ' · ACI SKYWAVE 99.9';
+  }
+  function radioOn() {
+    if (radioTimer) return;
+    radioStep = 0;
+    radioNextT = audioCtx.currentTime + 0.06;
+    musicBus.gain.setTargetAtTime(0.5, audioCtx.currentTime, 0.12);
+    radioTimer = setInterval(schedule, 25);
+    npUpdate();
+    trackTimer = setInterval(function () { trackIdx = (trackIdx + 1) % TRACKS.length; npUpdate(); }, 75000);
+  }
+  function radioOff() {
+    clearInterval(radioTimer); radioTimer = null;
+    clearInterval(trackTimer); trackTimer = null;
+    if (musicBus) musicBus.gain.setTargetAtTime(0.0001, audioCtx.currentTime, 0.1);
+  }
+
+  function setAudio(on) {
+    if (on && !audioCtx && !buildAudio()) return;
+    if (!audioCtx) return;
+    AE.on = on;
+    if (on && audioCtx.state === 'suspended') audioCtx.resume();
+    if (on) radioOn(); else radioOff();
+    if (audioBtn) {
+      audioBtn.innerHTML = on ? 'Skywave 99.9<span class="livedot"></span>' : 'FM 99.9 [Tune]';
+      audioBtn.classList.toggle('on', on);
+      audioBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+    if (npTicker) npTicker.hidden = !on;
+    store.set('aci_audio', on ? '1' : '0');
+  }
+  if (audioBtn) audioBtn.addEventListener('click', function () { setAudio(!AE.on); });
+
+  document.addEventListener('visibilitychange', function () {
+    if (!audioCtx) return;
+    if (document.hidden) audioCtx.suspend();
+    else if (AE.on) {
+      audioCtx.resume();
+      radioNextT = Math.max(radioNextT, audioCtx.currentTime + 0.05);
+    }
+  });
+
+  /* ---------- SFX (only audible when the radio toggle is on) ---------- */
+  AE.blip = function () {
+    if (!audioCtx || !AE.on) return;
+    var t = audioCtx.currentTime;
+    noiseVoice(t, 0.08, 'bandpass', 1400, 0.8, 0.25, sfxBus);
+  };
+  AE.thump = function () {
+    if (!audioCtx || !AE.on) return;
+    var t = audioCtx.currentTime;
+    var o = audioCtx.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(55, t);
+    o.frequency.exponentialRampToValueAtTime(24, t + 0.45);
+    var g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.5, t + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    o.connect(g); g.connect(sfxBus);
+    o.start(t); o.stop(t + 0.55);
+    noiseVoice(t, 0.03, 'lowpass', 900, 0.7, 0.15, sfxBus);
+  };
+  AE.horn = function () {
+    if (!audioCtx || !AE.on) return;
+    var t = audioCtx.currentTime;
+    [[t, 0.12, ['A4', 'E5']], [t + 0.18, 0.28, ['C5', 'G5']]].forEach(function (n) {
+      n[2].forEach(function (note) {
+        var o = audioCtx.createOscillator(); o.type = 'square'; o.frequency.value = freq(note);
+        var bp = audioCtx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1200; bp.Q.value = 1;
+        var g = audioCtx.createGain();
+        g.gain.setValueAtTime(0.0001, n[0]);
+        g.gain.linearRampToValueAtTime(0.35, n[0] + 0.005);
+        g.gain.setValueAtTime(0.35, n[0] + n[1]);
+        g.gain.exponentialRampToValueAtTime(0.001, n[0] + n[1] + 0.08);
+        o.connect(bp); bp.connect(g); g.connect(sfxBus);
+        o.start(n[0]); o.stop(n[0] + n[1] + 0.1);
+      });
+    });
+  };
+  /* Engine drive-by: returns a pan setter fed by the car's x each frame */
+  AE.engine = function (durSec) {
+    if (!audioCtx || !AE.on) return null;
+    var t = audioCtx.currentTime;
+    var pan = null;
+    try { pan = audioCtx.createStereoPanner(); } catch (e) {}
+    var lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(500, t);
+    lp.frequency.linearRampToValueAtTime(3000, t + durSec * 0.5);
+    lp.frequency.linearRampToValueAtTime(700, t + durSec);
+    var g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.5, t + durSec * 0.3);
+    g.gain.setValueAtTime(0.5, t + durSec * 0.8);
+    g.gain.linearRampToValueAtTime(0.0001, t + durSec);
+    lp.connect(g);
+    if (pan) { g.connect(pan); pan.connect(sfxBus); } else { g.connect(sfxBus); }
+    [70, 70.7].forEach(function (f0) {
+      var o = audioCtx.createOscillator(); o.type = 'sawtooth';
+      o.frequency.setValueAtTime(f0, t);
+      o.frequency.linearRampToValueAtTime(f0 * 2.1, t + durSec * 0.5);
+      o.frequency.linearRampToValueAtTime(f0 * 1.3, t + durSec);
+      var og = audioCtx.createGain(); og.gain.value = 0.5;
+      o.connect(og); og.connect(lp);
+      o.start(t); o.stop(t + durSec + 0.05);
+    });
+    var ns = audioCtx.createBufferSource(); ns.buffer = noiseBuf; ns.loop = true;
+    var ng = audioCtx.createGain(); ng.gain.value = 0.2;
+    ns.connect(ng); ng.connect(lp);
+    ns.start(t); ns.stop(t + durSec + 0.05);
+    return function (p) { if (pan) pan.pan.value = Math.max(-1, Math.min(1, p)); };
+  };
+
+  /* ---------- Rewind button ---------- */
+  var rew = $('#rewBtn');
+  if (rew) rew.addEventListener('click', function () {
+    burst('CH 01', 'SIGNAL', null);
+    window.scrollTo({ top: 0, behavior: RM ? 'auto' : 'smooth' });
+  });
+
+  /* ---------- Cheat code: degauss + the car ---------- */
+  var KONAMI = [38, 38, 40, 40, 37, 39, 37, 39, 66, 65];
+  var kbuf = [];
+  var degauss = $('#degauss');
+  function cheat() {
+    if (degauss && !RM) {
+      degauss.classList.add('on');
+      setTimeout(function () { degauss.classList.remove('on'); }, 950);
+    }
+    if (AE.thump) AE.thump();
+    burst('--', 'DEGAUSS', null);
+    setTimeout(function () {
+      driveBy(true);
+      if (AE.horn) AE.horn();
+    }, 500);
+  }
+  document.addEventListener('keydown', function (e) {
+    kbuf.push(e.keyCode);
+    if (kbuf.length > KONAMI.length) kbuf.shift();
+    if (kbuf.join(',') === KONAMI.join(',')) { kbuf = []; cheat(); }
+  });
+  /* Touch alternative: triple-tap the REC dot */
+  var recWrap = $('#recWrap');
+  if (recWrap) {
+    recWrap.style.pointerEvents = 'auto';
+    var taps = [];
+    recWrap.addEventListener('pointerdown', function () {
+      var now = Date.now();
+      taps.push(now);
+      taps = taps.filter(function (t) { return now - t < 900; });
+      if (taps.length >= 3) { taps = []; cheat(); }
+    });
+  }
+
+  /* ============================================================
+     CH 02 — OPERATIONS FLEET TRACKER
+     Real geography (Natural Earth), 7 heritage hubs, 4 flights,
+     2 sea lanes, 1 satellite. All motion transform-only in the
+     shared ticker; CSS handles pings, dash flow, and the sweep.
+     ============================================================ */
+  var fleetSvg = $('#fleetMap');
+  var mapActive = false;
+  if (fleetSvg && typeof WORLD_LAND !== 'undefined') (function () {
+    var NS = 'http://www.w3.org/2000/svg';
+    var K = 1000 / 360;
+    function X(lon) { return (lon + 180) * K; }
+    function Y(lat) { return (90 - lat) * K; }
+    function el(tag, attrs, parent) {
+      var e = document.createElementNS(NS, tag);
+      for (var k in attrs) e.setAttribute(k, attrs[k]);
+      if (parent) parent.appendChild(e);
+      return e;
+    }
+    var frame = $('#fleetFrame');
+
+    /* Graticule every 15 deg; equator + prime meridian brighter */
+    var dReg = '', dMain = '';
+    for (var lon = -180; lon <= 180; lon += 15) {
+      var seg = 'M' + X(lon).toFixed(1) + ' 0V460';
+      if (lon === 0) dMain += seg; else dReg += seg;
+    }
+    for (var lat = -75; lat <= 90; lat += 15) {
+      var seg2 = 'M0 ' + Y(lat).toFixed(1) + 'H1000';
+      if (lat === 0) dMain += seg2; else dReg += seg2;
+    }
+    var grat = $('#mGrat');
+    el('path', { d: dReg, 'class': 'm-grat' }, grat);
+    el('path', { d: dMain, 'class': 'm-grat-main' }, grat);
+
+    /* Land: glow pass (static filter), crisp pass, borders */
+    var landG = $('#mLandG');
+    el('path', { d: WORLD_LAND, 'class': 'm-landglow' }, landG);
+    el('path', { d: WORLD_LAND, 'class': 'm-land' }, landG);
+    el('path', { d: WORLD_BORDERS, 'class': 'm-borders' }, landG);
+
+    /* Continent + ocean labels (the original site's exact set) */
+    var LBL = [
+      ['NORTH AMERICA', -100, 45, 1], ['SOUTH AMERICA', -60, -15, 1],
+      ['EUROPE', 15, 52, 1], ['AFRICA', 20, 5, 1],
+      ['ASIA', 90, 45, 1], ['OCEANIA', 135, -25, 1],
+      ['PACIFIC OCEAN', -140, 0, 0], ['ATLANTIC OCEAN', -35, 15, 0],
+      ['INDIAN OCEAN', 75, -25, 0]
+    ];
+    var labels = $('#mLabels');
+    LBL.forEach(function (L) {
+      var t = el('text', {
+        x: X(L[1]).toFixed(1), y: Y(L[2]).toFixed(1),
+        'class': L[3] ? 'm-label-cont' : 'm-label-ocean',
+        'text-anchor': 'middle'
+      }, labels);
+      t.textContent = L[0];
+    });
+
+    /* Tooltip (one reusable node) */
+    var tip = $('#fleetTip');
+    function showTip(lines, cx, cy) {
+      tip.innerHTML = '<span class="t1">' + lines[0] + '</span><span class="t2">' + lines[1] + '</span>'
+        + (lines[2] ? '<span class="t3">' + lines[2] + '</span>' : '');
+      tip.hidden = false;
+      var fr = frame.getBoundingClientRect();
+      var x = cx - fr.left + 14, y = cy - fr.top - 10;
+      var tw = tip.offsetWidth, th = tip.offsetHeight;
+      if (x + tw > fr.width - 8) x = cx - fr.left - tw - 14;
+      if (y + th > fr.height - 8) y = fr.height - th - 8;
+      if (y < 8) y = 8;
+      tip.style.left = x + 'px'; tip.style.top = y + 'px';
+    }
+    function hideTip() { tip.hidden = true; }
+
+    /* Heritage hubs, verbatim from the original site */
+    var HUBS = [
+      { key: 'NEW YORK', title: 'HQ: New York', status: 'Operational', lat: 40.71, lon: -74.00 },
+      { key: 'AMAZONIA', title: 'Site: Amazonia', status: 'Surveying', lat: -3.46, lon: -62.21 },
+      { key: 'LONDON', title: 'Hub: London', status: 'Logistics Transit', lat: 51.50, lon: -0.12 },
+      { key: 'CAPE TOWN', title: 'Site: Cape Town', status: 'Extraction', lat: -33.92, lon: 18.42 },
+      { key: 'DUBAI', title: 'Hub: Dubai', status: 'Refueling', lat: 25.20, lon: 55.27 },
+      { key: 'TOKYO', title: 'Hub: Tokyo', status: 'Data Processing', lat: 35.67, lon: 139.65, left: 1 },
+      { key: 'SYDNEY', title: 'Site: Sydney', status: 'Oceanic Dispatch', lat: -33.86, lon: 151.20, left: 1 }
+    ];
+    var hubsG = $('#mHubs');
+    function bigPing(x, y) {
+      var r1 = el('circle', { cx: x, cy: y, r: 40, 'class': 'm-ping-big', stroke: '#ff00ff' }, hubsG);
+      setTimeout(function () {
+        var r2 = el('circle', { cx: x, cy: y, r: 40, 'class': 'm-ping-big', stroke: '#00f2ff' }, hubsG);
+        setTimeout(function () { r2.remove(); }, 950);
+      }, 150);
+      setTimeout(function () { r1.remove(); }, 950);
+    }
+    HUBS.forEach(function (h, i) {
+      var x = h.x = X(h.lon), y = h.y = Y(h.lat);
+      var g = el('g', {}, hubsG);
+      var ping = el('circle', { cx: x, cy: y, r: 12, 'class': 'm-ping' }, g);
+      ping.style.animationDelay = (i * 0.45) + 's';
+      el('circle', { cx: x, cy: y, r: 3.5, 'class': 'm-hub-core' }, g);
+      el('circle', { cx: x, cy: y, r: 1.2, 'class': 'm-hub-inner' }, g);
+      var lbl = el('text', {
+        x: h.left ? x - 8 : x + 8, y: y + 4,
+        'class': 'm-hub-label', 'text-anchor': h.left ? 'end' : 'start'
+      }, g);
+      lbl.textContent = h.key;
+      var hit = el('circle', { cx: x, cy: y, r: 12, 'class': 'm-hub-hit' }, g);
+      var lines = [h.title, 'Status: ' + h.status, 'LAT: ' + h.lat.toFixed(2) + ' | LON: ' + h.lon.toFixed(2)];
+      hit.addEventListener('pointerenter', function (e) { showTip(lines, e.clientX, e.clientY); });
+      hit.addEventListener('pointerleave', hideTip);
+      hit.addEventListener('click', function (e) {
+        bigPing(x, y);
+        addLog('MANUAL PING, ' + h.key + ' ACKNOWLEDGED');
+        showTip(lines, e.clientX, e.clientY);
+        setTimeout(hideTip, 1800);
+      });
+    });
+
+    /* Routes + vehicles */
+    var GLYPH = {
+      flt: '<circle r="8" fill="url(#gGlowC)"/><path d="M8 0 L-4 3 L-1.5 0 L-4 -3 Z M-3 0 L-6 1.5 L-6 -1.5 Z" fill="#ffffff"/>',
+      sea: '<circle r="8" fill="url(#gGlowY)"/><path d="M-6 1 L6 1 L3.5 4 L-3.5 4 Z" fill="#ffcc00"/><path d="M-2 1 L-2 -2 L2 -2 L2 1 Z" fill="#ffcc00"/><line x1="0" y1="-2" x2="0" y2="-5" stroke="#ffcc00"/>',
+      sat: '<circle r="9" fill="url(#gGlowW)"/><rect x="-2" y="-2" width="4" height="4" fill="#ffffff"/><rect x="-9" y="-1.5" width="6" height="3" fill="#00f2ff" opacity=".9"/><rect x="3" y="-1.5" width="6" height="3" fill="#00f2ff" opacity=".9"/><line x1="0" y1="-2" x2="0" y2="-5" stroke="#ffffff" stroke-width=".8"/>'
+    };
+    var ROUTES = [
+      { id: 'ACI-FLT 001', type: 'flt', d: 'M294 137 Q400 60 500 107', secs: 26, a: 'NEW YORK', b: 'LONDON' },
+      { id: 'ACI-FLT 002', type: 'flt', d: 'M500 107 Q580 118 654 180', secs: 22, a: 'LONDON', b: 'DUBAI' },
+      { id: 'ACI-FLT 003', type: 'flt', d: 'M654 180 Q775 128 888 151', secs: 28, a: 'DUBAI', b: 'TOKYO' },
+      { id: 'ACI-FLT 004', type: 'flt', d: 'M294 137 Q288 205 327 260', secs: 18, a: 'NEW YORK', b: 'AMAZONIA' },
+      { id: 'ACI-SEA 001', type: 'sea', d: 'M551 344 Q735 402 920 344', secs: 80, a: 'CAPE TOWN', b: 'SYDNEY' },
+      { id: 'ACI-SEA 002', type: 'sea', d: 'M294 137 Q361 333 551 344', secs: 90, a: 'NEW YORK', b: 'CAPE TOWN' }
+    ];
+    var routesG = $('#mRoutes'), vehG = $('#mVehicles');
+    var vehicles = [];
+    ROUTES.forEach(function (r) {
+      el('path', { d: r.d, 'class': 'm-route ' + r.type }, routesG);
+      var hidden = el('path', { d: r.d, fill: 'none', stroke: 'none' }, routesG);
+      var g = el('g', { 'class': 'm-vehicle' }, vehG);
+      g.innerHTML = GLYPH[r.type];
+      var hit = el('circle', { r: 10, fill: 'transparent', 'pointer-events': 'all' }, g);
+      var v = { g: g, path: hidden, len: hidden.getTotalLength(), r: r, t: Math.random() * 0.7, dir: 1, dwell: 0 };
+      vehicles.push(v);
+      hit.addEventListener('pointerenter', function (e) {
+        var where = v.dwell > 0
+          ? 'DOCKED: ' + (v.t >= 0.99 ? r.b : r.a)
+          : 'EN ROUTE: ' + (v.dir === 1 ? r.b : r.a);
+        showTip([r.id, where, ''], e.clientX, e.clientY);
+      });
+      hit.addEventListener('pointerleave', hideTip);
+    });
+
+    /* Satellite: parametric tilted ellipse, 45s lap, exits/re-enters the frame */
+    var orbitRot = -8 * Math.PI / 180;
+    function orbitPos(ph) {
+      var ex = 560 * Math.cos(ph), ey = 150 * Math.sin(ph);
+      return {
+        x: 500 + ex * Math.cos(orbitRot) - ey * Math.sin(orbitRot),
+        y: 230 + ex * Math.sin(orbitRot) + ey * Math.cos(orbitRot)
+      };
+    }
+    var orbD = '';
+    for (var a2 = 0; a2 <= 128; a2++) {
+      var op = orbitPos(a2 / 128 * Math.PI * 2);
+      orbD += (a2 ? 'L' : 'M') + op.x.toFixed(1) + ' ' + op.y.toFixed(1);
+    }
+    el('path', { d: orbD + 'Z', 'class': 'm-route orb' }, routesG);
+    var satG = el('g', { 'class': 'm-vehicle' }, vehG);
+    satG.innerHTML = GLYPH.sat;
+    var satHit = el('circle', { r: 11, fill: 'transparent', 'pointer-events': 'all' }, satG);
+    satHit.addEventListener('pointerenter', function (e) { showTip(['ACI-SAT 001', 'ORBITAL RELAY', 'UPLINK: STABLE'], e.clientX, e.clientY); });
+    satHit.addEventListener('pointerleave', hideTip);
+    var satPh = Math.random() * Math.PI * 2;
+
+    /* Motion */
+    function arrivalPing(v) {
+      var P = v.path.getPointAtLength(v.len * v.t);
+      var ring = el('circle', { cx: P.x, cy: P.y, r: 22, 'class': 'm-ping-big', stroke: '#00f2ff' }, hubsG);
+      setTimeout(function () { ring.remove(); }, 950);
+    }
+    if (RM) {
+      vehicles.forEach(function (v) {
+        var P = v.path.getPointAtLength(v.len);
+        v.t = 1; v.dwell = 1e9;
+        v.g.setAttribute('transform', 'translate(' + P.x.toFixed(1) + ' ' + P.y.toFixed(1) + ')');
+      });
+      var sp0 = orbitPos(-Math.PI / 2);
+      satG.setAttribute('transform', 'translate(' + sp0.x.toFixed(1) + ' ' + sp0.y.toFixed(1) + ')');
+    } else {
+      var lastT = null;
+      addTask(function (t) {
+        if (lastT === null) lastT = t;
+        var dt = Math.min((t - lastT) / 1000, 0.1);
+        lastT = t;
+        if (!mapActive) return;
+        vehicles.forEach(function (v) {
+          if (v.dwell > 0) { v.dwell -= dt; return; }
+          v.t += dt / v.r.secs * v.dir;
+          if (v.t >= 1) { v.t = 1; v.dir = -1; v.dwell = 2.5; arrivalPing(v); }
+          else if (v.t <= 0) { v.t = 0; v.dir = 1; v.dwell = 2.5; arrivalPing(v); }
+          var L = v.len * v.t;
+          var p1 = v.path.getPointAtLength(L);
+          var p2 = v.path.getPointAtLength(Math.min(L + 2, v.len));
+          var ang = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI;
+          if (v.dir === -1) ang += 180;
+          v.g.setAttribute('transform', 'translate(' + p1.x.toFixed(1) + ' ' + p1.y.toFixed(1) + ') rotate(' + ang.toFixed(1) + ')');
+        });
+        satPh += dt / 45 * Math.PI * 2;
+        var sp = orbitPos(satPh), sp2 = orbitPos(satPh + 0.02);
+        var sang = Math.atan2(sp2.y - sp.y, sp2.x - sp.x) * 180 / Math.PI;
+        satG.setAttribute('transform', 'translate(' + sp.x.toFixed(1) + ' ' + sp.y.toFixed(1) + ') rotate(' + sang.toFixed(1) + ')');
+      });
+    }
+
+    /* Pause everything when the section is off-screen */
+    try {
+      var mio = new IntersectionObserver(function (es) {
+        es.forEach(function (e) {
+          mapActive = e.isIntersecting && !RM;
+          frame.classList.toggle('paused', !e.isIntersecting);
+        });
+      }, { threshold: 0.05 });
+      mio.observe(frame);
+    } catch (e) { mapActive = !RM; }
+
+    /* Crosshair + live LAT/LON readout (fine pointers only) */
+    var coordsEl = $('#fleetCoords');
+    try {
+      if (matchMedia('(pointer: fine)').matches) {
+        var crossH = $('#crossH'), crossV = $('#crossV');
+        fleetSvg.addEventListener('pointermove', function (e) {
+          var r = fleetSvg.getBoundingClientRect();
+          var sx = (e.clientX - r.left) / r.width * 1000;
+          var sy = (e.clientY - r.top) / r.height * 460;
+          crossH.setAttribute('transform', 'translate(0 ' + sy.toFixed(1) + ')');
+          crossV.setAttribute('transform', 'translate(' + sx.toFixed(1) + ' 0)');
+          var lonC = sx * 0.36 - 180, latC = 90 - sy * 0.36;
+          coordsEl.textContent = 'LAT ' + Math.abs(latC).toFixed(1) + (latC >= 0 ? 'N' : 'S')
+            + ' | LON ' + Math.abs(lonC).toFixed(1) + (lonC >= 0 ? 'E' : 'W');
+          frame.classList.add('crossing');
+        });
+        fleetSvg.addEventListener('pointerleave', function () {
+          frame.classList.remove('crossing');
+          coordsEl.textContent = 'LAT --.- | LON --.-';
+        });
+      }
+    } catch (e) {}
+
+    /* Transmission log */
+    var logEl = $('#fleetLog');
+    var GENERIC = [
+      'CONTACT CONFIRMED, {H}', 'ASSET DEPLOYED, {H}', 'MANIFEST RECEIVED, {H}',
+      'HANDSHAKE ACCEPTED, {H}', 'NEW PROSPECT LOGGED, {H}', 'CARGO SECURED, {H}',
+      'CUSTOMS CLEARED, {H}', 'SIGNAL BOOSTED, {H}'
+    ];
+    var FIXED = [
+      'REFUEL COMPLETE, DUBAI', 'SURVEY GRID UPDATED, AMAZONIA', 'TIDE WINDOW OPEN, SYDNEY',
+      'UPLINK STABLE, ORBITAL RELAY', 'SAT PASS COMPLETE, SECTOR 7', 'ALL CHANNELS MONITORED'
+    ];
+    var lastHub = '';
+    function utcNow() {
+      var d = new Date();
+      return pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds());
+    }
+    function addLog(msg) {
+      if (!logEl) return;
+      var idx = msg.lastIndexOf(', ');
+      var verb = idx === -1 ? msg : msg.slice(0, idx);
+      var hub = idx === -1 ? '' : msg.slice(idx + 2);
+      var line = document.createElement('span');
+      line.className = 'll';
+      line.innerHTML = '<span class="t">' + utcNow() + '</span> <span class="v">' + verb + (hub ? ',' : '') + '</span>'
+        + (hub ? ' <span class="h">' + hub + '</span>' : '');
+      /* remove BEFORE append so document height never pulses (scroll anchoring) */
+      var lines = logEl.querySelectorAll('.ll');
+      if (lines.length >= 5) lines[0].remove();
+      logEl.appendChild(line);
+      lines = logEl.querySelectorAll('.ll');
+      for (var i = 0; i < lines.length - 1; i++) lines[i].classList.add('old');
+    }
+    window.__aciLog = addLog;
+    function pickPhrase() {
+      if (Math.random() < 0.25) return FIXED[(Math.random() * FIXED.length) | 0];
+      var hub;
+      do { hub = HUBS[(Math.random() * HUBS.length) | 0].key; } while (hub === lastHub);
+      lastHub = hub;
+      return GENERIC[(Math.random() * GENERIC.length) | 0].replace('{H}', hub);
+    }
+    addLog('CONTACT CONFIRMED, NEW YORK');
+    addLog('SIGNAL BOOSTED, LONDON');
+    addLog('ALL CHANNELS MONITORED');
+    if (!RM) {
+      (function schedLog() {
+        setTimeout(function () {
+          if (!document.hidden && mapActive) addLog(pickPhrase());
+          schedLog();
+        }, 6000 + Math.random() * 4000);
+      })();
+    } else {
+      addLog('UPLINK STABLE, ORBITAL RELAY');
+    }
+  })();
+
+  /* ============================================================
+     THE CAR — random cadence + cheat code, transform-only
+     ============================================================ */
+  var carLane = $('#carLane'), car = $('#car');
+  var wFs = $('#wFs'), wRs = $('#wRs');
+  var carBusy = false;
+  function driveBy(fromCheat) {
+    if (!car) return;
+    if (RM) {
+      if (fromCheat && carLane) {
+        carLane.classList.add('rm-show');
+        car.style.transform = 'translateX(' + Math.max(20, innerWidth - 520) + 'px)';
+        setTimeout(function () {
+          carLane.classList.remove('rm-show');
+          car.style.transform = 'translateX(-560px)';
+        }, 2000);
+      }
+      return;
+    }
+    if (carBusy || (fxLock && !fromCheat)) return;
+    fxLock = true; carBusy = true;
+    car.classList.add('driving');
+    var W = innerWidth;
+    var small = W < 640;
+    var dur = small ? 2600 : 3000;
+    var carW = small ? 320 : 480;
+    var from = -carW - 100, to = W + 90;
+    var panSet = AE.engine ? AE.engine(dur / 1000) : null;
+    var start = null, lastX = from, rot = 0;
+    addTask(function (t) {
+      if (start === null) start = t;
+      var k = Math.min((t - start) / dur, 1);
+      var e = 0.3 * (k * k * (3 - 2 * k)) + 0.7 * k;
+      var x = from + (to - from) * e;
+      var bob = Math.sin(t / 55) * 2;
+      car.style.transform = 'translateX(' + x.toFixed(1) + 'px) translateY(' + bob.toFixed(1) + 'px)';
+      rot += (x - lastX) * 3.37; /* deg per px for r=17 wheels */
+      lastX = x;
+      var rs = 'rotate(' + (rot % 360).toFixed(0) + ')';
+      if (wFs) wFs.setAttribute('transform', rs);
+      if (wRs) wRs.setAttribute('transform', rs);
+      if (panSet) panSet((x / W) * 2 - 1);
+      if (k >= 1) {
+        car.classList.remove('driving');
+        car.style.transform = 'translateX(' + from + 'px)';
+        fxLock = false; carBusy = false;
+        return false;
+      }
+    });
+  }
+  (function schedCar() {
+    if (RM) return;
+    setTimeout(function () {
+      if (!document.hidden) driveBy(false);
+      schedCar();
+    }, 45000 + Math.random() * 45000);
+  })();
+})();
+</script>
