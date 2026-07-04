@@ -492,23 +492,29 @@
     setAudio(audioWanted);
   });
 
-  /* Radio ON at start. Browsers block audio until a user gesture, so we
-     prime it on the very first interaction (any pointer / key / touch,
-     including the boot-screen tap) unless the visitor turned it off before. */
+  /* Radio starts when the visitor first SCROLLS DOWN (unless they turned it
+     off before). A bare 'scroll' event does not grant the user activation
+     browsers require to unlock audio, so we listen for the input gestures
+     that actually drive a downward scroll (wheel, scroll keys, touch drag);
+     each of those carries activation, so setAudio -> resume() succeeds. */
   var audioWanted = store.get('aci_audio') !== '0';
+  var SCROLL_KEYS = { 'ArrowDown': 1, 'PageDown': 1, 'End': 1, ' ': 1, 'Spacebar': 1 };
   function primeAudio() {
     if (audioWanted && !AE.on) setAudio(true);
-    window.removeEventListener('pointerdown', primeAudio);
-    window.removeEventListener('keydown', primeAudio);
-    window.removeEventListener('touchstart', primeAudio);
+    window.removeEventListener('wheel', onWheelPrime);
+    window.removeEventListener('keydown', onKeyPrime);
+    window.removeEventListener('touchmove', primeAudio);
+    window.removeEventListener('scroll', onScrollPrime);
   }
+  function onWheelPrime(e) { if (e.deltaY > 0) primeAudio(); }
+  function onKeyPrime(e) { if (SCROLL_KEYS[e.key]) primeAudio(); }
+  function onScrollPrime() { if (window.scrollY > 4) primeAudio(); }
   if (audioWanted) {
-    window.addEventListener('pointerdown', primeAudio, { once: false });
-    window.addEventListener('keydown', primeAudio, { once: false });
-    window.addEventListener('touchstart', primeAudio, { once: false });
-    /* Some engines allow a silent auto-attempt; try, and keep the gesture
-       primer as the guaranteed fallback. */
-    setTimeout(function () { if (audioWanted && !AE.on) setAudio(true); }, 400);
+    window.addEventListener('wheel', onWheelPrime, { passive: true });
+    window.addEventListener('keydown', onKeyPrime);
+    window.addEventListener('touchmove', primeAudio, { passive: true });
+    /* Backstop for scroll paths that skip the above (scrollbar drag, etc.). */
+    window.addEventListener('scroll', onScrollPrime, { passive: true });
   }
 
   document.addEventListener('visibilitychange', function () {
