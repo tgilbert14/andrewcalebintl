@@ -2046,48 +2046,71 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
     if (musicBus) musicBus.gain.setTargetAtTime(0.0001, audioCtx.currentTime, 0.1);
   }
 
-  function setAudio(on) {
-    if (on && !audioCtx && !buildAudio()) return;
-    if (!audioCtx) return;
+  function applyAudioUI(on) {
     AE.on = on;
-    if (on && audioCtx.state === 'suspended') audioCtx.resume();
-    if (on) radioOn(); else radioOff();
     if (audioBtn) {
       audioBtn.innerHTML = on ? 'Skywave 99.9<span class="livedot"></span>' : 'FM 99.9 [Tune]';
       audioBtn.classList.toggle('on', on);
       audioBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
     }
     if (npTicker) npTicker.hidden = !on;
-    store.set('aci_audio', on ? '1' : '0');
+  }
+  /* Only report "on" once the AudioContext is genuinely running. resume()
+     silently stays suspended unless it is called with a real user activation
+     (a click / keydown / touchend / pointerdown, NOT a wheel or scroll), so
+     committing the UI on running-state is what keeps the chip from claiming
+     to play while silent. */
+  function setAudio(on) {
+    if (!on) {
+      store.set('aci_audio', '0');
+      if (audioCtx) radioOff();
+      applyAudioUI(false);
+      return;
+    }
+    if (!audioCtx && !buildAudio()) return;
+    store.set('aci_audio', '1');
+    var settle = function () {
+      if (audioCtx.state === 'running') { radioOn(); applyAudioUI(true); return true; }
+      return false;
+    };
+    var p = audioCtx.resume();
+    if (settle()) return;
+    if (p && p.then) p.then(settle).catch(function () {});
   }
   if (audioBtn) audioBtn.addEventListener('click', function () {
     audioWanted = !AE.on;
     setAudio(audioWanted);
   });
 
-  /* Radio starts when the visitor first SCROLLS DOWN (unless they turned it
-     off before). A bare 'scroll' event does not grant the user activation
-     browsers require to unlock audio, so we listen for the input gestures
-     that actually drive a downward scroll (wheel, scroll keys, touch drag);
-     each of those carries activation, so setAudio -> resume() succeeds. */
+  /* Radio comes on when the visitor first SCROLLS DOWN (unless they turned it
+     off before). Scroll gestures (wheel / touchmove / scroll) do not carry the
+     user activation browsers require to unlock audio, so scrolling only ARMS
+     the intent; the audio actually starts on the first activation-bearing event
+     that follows (touchend on a phone swipe, a scroll key, or the next tap /
+     click). A tap before any scroll never starts it. */
   var audioWanted = store.get('aci_audio') !== '0';
   var SCROLL_KEYS = { 'ArrowDown': 1, 'PageDown': 1, 'End': 1, ' ': 1, 'Spacebar': 1 };
-  function primeAudio() {
-    if (audioWanted && !AE.on) setAudio(true);
-    window.removeEventListener('wheel', onWheelPrime);
-    window.removeEventListener('keydown', onKeyPrime);
-    window.removeEventListener('touchmove', primeAudio);
-    window.removeEventListener('scroll', onScrollPrime);
+  var PRIME_EVENTS = ['wheel', 'scroll', 'keydown', 'touchmove', 'touchend', 'pointerdown'];
+  var scrolledDown = false;
+  function teardownPrimers() {
+    PRIME_EVENTS.forEach(function (t) { window.removeEventListener(t, onAudioPrime, true); });
   }
-  function onWheelPrime(e) { if (e.deltaY > 0) primeAudio(); }
-  function onKeyPrime(e) { if (SCROLL_KEYS[e.key]) primeAudio(); }
-  function onScrollPrime() { if (window.scrollY > 4) primeAudio(); }
+  function onAudioPrime(e) {
+    if (!audioWanted) { teardownPrimers(); return; }
+    var t = e.type;
+    if (t === 'wheel') { if (e.deltaY > 0) scrolledDown = true; }
+    else if (t === 'scroll') { if (window.scrollY > 4) scrolledDown = true; }
+    else if (t === 'keydown') { if (SCROLL_KEYS[e.key]) scrolledDown = true; }
+    else if (t === 'touchmove') { scrolledDown = true; }
+    /* touchend / pointerdown carry no scroll intent of their own; they exist
+       only to supply activation once the visitor has already scrolled. */
+    if (scrolledDown && !AE.on) setAudio(true);
+    if (AE.on) teardownPrimers();
+  }
   if (audioWanted) {
-    window.addEventListener('wheel', onWheelPrime, { passive: true });
-    window.addEventListener('keydown', onKeyPrime);
-    window.addEventListener('touchmove', primeAudio, { passive: true });
-    /* Backstop for scroll paths that skip the above (scrollbar drag, etc.). */
-    window.addEventListener('scroll', onScrollPrime, { passive: true });
+    PRIME_EVENTS.forEach(function (t) {
+      window.addEventListener(t, onAudioPrime, { passive: true, capture: true });
+    });
   }
 
   document.addEventListener('visibilitychange', function () {
