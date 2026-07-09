@@ -198,7 +198,10 @@ html.rm .page.hjitter { animation: none; }
   width: 100vw; height: 100vh;
   image-rendering: pixelated;
   display: none; pointer-events: none;
-  opacity: .92;
+  /* Luminance-capped: the noise itself is mid-gray band (see burst()) and the
+     layer stays translucent so the full-field flash sits under the WCAG 2.3.1
+     general flash threshold. */
+  opacity: .5;
 }
 .fx-static.on { display: block; }
 .fx-chlabel {
@@ -261,10 +264,12 @@ html.rm .page.hjitter { animation: none; }
 .boot .label {
   font-size: clamp(20px, 2.6vw, 30px); letter-spacing: .18em;
   text-shadow: -2px 0 var(--neon-pink), 2px 0 var(--signal-cyan);
+  max-width: 92vw; white-space: normal; text-align: center;
 }
 .boot .sub { font-size: clamp(16px, 1.8vw, 20px); letter-spacing: .3em; opacity: .8; }
 .boot .hint {
-  position: absolute; bottom: 6vh; left: 6vw;
+  position: absolute; bottom: calc(6vh + 2.9em); left: 6vw; right: 6vw;
+  max-width: 88vw; white-space: normal;
   font-size: 16px; letter-spacing: .12em;
   color: var(--osd-amber); opacity: .85;
   text-align: left;
@@ -284,6 +289,7 @@ html.rm .page.hjitter { animation: none; }
 .boot .skip {
   position: absolute; bottom: 6vh; left: 0; right: 0;
   text-align: center;
+  white-space: normal; padding: 0 10px;
   font-size: 18px; letter-spacing: .25em; opacity: .75;
   animation: osdblink 1.4s steps(1) infinite;
 }
@@ -315,6 +321,7 @@ html.rm .boot .track { display: none; }
   animation: osdblink 1.1s steps(1) infinite;
 }
 html.rm .hud .recdot { animation: none; }
+#recWrap.hot .recdot { animation: none; } /* burns solid while a transmission is open */
 .hud .audio-btn {
   pointer-events: auto;
   background: none; border: 1px solid rgba(255,204,0,.4);
@@ -336,6 +343,9 @@ html.rm .hud .recdot { animation: none; }
   animation: osdblink 1.2s steps(1) infinite;
 }
 html.rm .hud .audio-btn.on .livedot { animation: none; }
+/* Attention pulse for when the radio auto-starts (primer path, not a click) */
+.hud .audio-btn.pulse { animation: osdblink .45s steps(1) 3; }
+html.rm .hud .audio-btn.pulse { animation: none; }
 .hud .np {
   display: inline-block; max-width: 26ch; overflow: hidden; white-space: nowrap;
   font-family: var(--font-osd); font-size: 16px;
@@ -344,6 +354,7 @@ html.rm .hud .audio-btn.on .livedot { animation: none; }
   vertical-align: bottom;
 }
 .hud .np .np-inner { display: inline-block; padding-left: 100%; animation: npmarq 12s linear infinite; }
+.hud .np[hidden] { display: none; }
 @keyframes npmarq { to { transform: translateX(-100%); } }
 html.rm .hud .np .np-inner { animation: none; padding-left: 0; }
 .hud #hudCh.flash { color: var(--nav-acc, var(--osd-amber)); text-shadow: 0 0 10px currentColor; }
@@ -371,7 +382,9 @@ html.rm .hud .np .np-inner { animation: none; padding-left: 0; }
 }
 .tapenav a:hover { color: var(--osd-amber); }
 .tapenav a.active { color: var(--nav-acc, var(--signal-cyan)); text-shadow: 0 0 8px currentColor, 2px 2px 0 rgba(0,0,0,.85); }
-.tapenav a.active::before { content: '\25B8 '; }
+/* Layout-neutral active marker: an underline bar instead of an injected glyph,
+   so the centered bar never reflows when the section changes. */
+.tapenav a.active { box-shadow: 0 3px 0 -1px currentColor; }
 
 /* ============================================================
    CH 01 — HERO
@@ -430,6 +443,11 @@ html.rm .hud .np .np-inner { animation: none; padding-left: 0; }
   overflow: clip;
   background: linear-gradient(180deg, rgba(10,6,20,.25), rgba(10,6,20,.88));
 }
+/* NOTE: the scrolling grid is deliberately a background-position animation
+   (main-thread paint). A composited transform layer here rasterizes under
+   perspective+rotateX at exploding scale near the bottom edge and can wedge
+   the GPU process — tested and reverted. Do not "optimize" this to a
+   transform without testing on real hardware. */
 .hero-grid {
   position: absolute; inset: -60% -40% 0;
   background:
@@ -438,7 +456,6 @@ html.rm .hud .np .np-inner { animation: none; padding-left: 0; }
   transform: rotateX(61deg);
   transform-origin: 50% 0;
   animation: gridmove 1.5s linear infinite;
-  will-change: background-position;
   -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 22%);
   mask-image: linear-gradient(180deg, transparent 0, #000 22%);
 }

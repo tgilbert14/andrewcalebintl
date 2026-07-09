@@ -6,14 +6,18 @@
   'use strict';
 
   /* ---------- Environment ---------- */
-  var RM = false;
-  try { RM = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
-  if (RM) document.documentElement.classList.add('rm');
-
   var store = {
     get: function (k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } },
     set: function (k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} }
   };
+
+  /* Effects state: OS reduced-motion is the default, but the HUD FX toggle
+     (this session's explicit choice) wins over it. */
+  var RM = false;
+  try { RM = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+  var fxPref = store.get('aci_fx');
+  if (fxPref === '0') RM = true; else if (fxPref === '1') RM = false;
+  if (RM) document.documentElement.classList.add('rm');
 
   var $ = function (s) { return document.querySelector(s); };
   var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
@@ -25,10 +29,13 @@
   var tasks = [];
   var rafId = null;
   function loop(t) {
+    rafId = null; /* consumed; reset first so a throw can't strand a stale id */
     for (var i = tasks.length - 1; i >= 0; i--) {
-      if (tasks[i](t) === false) tasks.splice(i, 1);
+      var r;
+      try { r = tasks[i](t); } catch (err) { r = false; }
+      if (r === false) tasks.splice(i, 1);
     }
-    rafId = tasks.length ? requestAnimationFrame(loop) : null;
+    if (tasks.length) rafId = requestAnimationFrame(loop);
   }
   function addTask(fn) {
     tasks.push(fn);
@@ -52,8 +59,25 @@
       setTimeout(function () { if (bootStatus) bootStatus.textContent = 'Play'; }, 1100);
       boot.addEventListener('pointerdown', dismissBoot);
       document.addEventListener('keydown', dismissBoot);
-      setTimeout(dismissBoot, RM ? 1200 : 2400);
+      setTimeout(dismissBoot, RM ? 1200 : 1800);
     }
+  }
+
+  /* ---------- FX toggle (on-page pause for all motion, WCAG 2.2.2) ---------- */
+  var fxBtn = $('#fxBtn');
+  function applyFxUI() {
+    if (!fxBtn) return;
+    fxBtn.textContent = RM ? 'FX [Off]' : 'FX [On]';
+    fxBtn.setAttribute('aria-pressed', RM ? 'false' : 'true');
+  }
+  if (fxBtn) {
+    applyFxUI();
+    fxBtn.addEventListener('click', function () {
+      RM = !RM;
+      document.documentElement.classList.toggle('rm', RM);
+      store.set('aci_fx', RM ? '0' : '1');
+      applyFxUI();
+    });
   }
 
   /* ---------- HUD clock + tape counter ---------- */
@@ -62,8 +86,10 @@
   var feedStamp = $('#feedStamp');
   var fleetUtc = $('#fleetUtc');
   var t0 = Date.now();
+  var spooling = false; /* rewind animation owns the counter while true */
   var MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
   function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmtCounter(sec) { return Math.floor(sec / 3600) + ':' + pad(Math.floor(sec / 60) % 60) + ':' + pad(sec % 60); }
   function tickClock() {
     var d = new Date();
     var h = d.getHours();
@@ -73,7 +99,7 @@
     if (hudClock) hudClock.textContent = ampm + ' ' + pad(h12) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) + ' · ' + stamp;
     if (feedStamp) feedStamp.textContent = stamp;
     var el = Math.floor((Date.now() - t0) / 1000);
-    if (hudCounter) hudCounter.textContent = Math.floor(el / 3600) + ':' + pad(Math.floor(el / 60) % 60) + ':' + pad(el % 60);
+    if (hudCounter && !spooling) hudCounter.textContent = fmtCounter(el);
     if (fleetUtc) fleetUtc.textContent = 'UTC ' + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds());
   }
   tickClock();
@@ -83,10 +109,13 @@
   var staticC = $('#staticfx');
   var chlabel = $('#chlabel');
   var sctx = staticC ? staticC.getContext('2d') : null;
-  var fxLock = false;
+  /* Each effect owns its own flag; the shared gate is derived, so one effect
+     finishing can never unlock the other early. */
+  var burstBusy = false, carBusy = false;
+  function fxBusy() { return burstBusy || carBusy; }
   function burst(ch, name, done) {
-    if (RM || !sctx || fxLock) { if (done) done(); return; }
-    fxLock = true;
+    if (RM || !sctx || fxBusy()) { if (done) done(); return; }
+    burstBusy = true;
     if (AE.on && AE.blip) AE.blip();
     staticC.classList.add('on');
     if (chlabel) {
@@ -97,19 +126,24 @@
     var start = performance.now();
     var img = sctx.createImageData(160, 90);
     var data = img.data;
+    function endBurst() {
+      staticC.classList.remove('on');
+      if (chlabel) chlabel.classList.remove('on');
+      burstBusy = false;
+      if (done) done();
+    }
     addTask(function (t) {
-      for (var i = 0; i < data.length; i += 4) {
-        var v = (Math.random() * 255) | 0;
-        data[i] = v; data[i + 1] = v; data[i + 2] = v; data[i + 3] = 255;
-      }
-      sctx.putImageData(img, 0, 0);
-      if (t - start > 300) {
-        staticC.classList.remove('on');
-        if (chlabel) chlabel.classList.remove('on');
-        fxLock = false;
-        if (done) done();
-        return false;
-      }
+      try {
+        for (var i = 0; i < data.length; i += 4) {
+          /* Mid-gray band, not full black-to-white: with the layer's .5
+             opacity this keeps the full-field flash under the WCAG 2.3.1
+             general flash threshold while still reading as tape static. */
+          var v = 90 + ((Math.random() * 60) | 0);
+          data[i] = v; data[i + 1] = v; data[i + 2] = v; data[i + 3] = 255;
+        }
+        sctx.putImageData(img, 0, 0);
+        if (t - start > 300) { endBurst(); return false; }
+      } catch (e) { endBurst(); return false; }
     });
   }
 
@@ -124,6 +158,10 @@
       var go = function () {
         target.scrollIntoView({ behavior: RM ? 'auto' : 'smooth', block: 'start' });
         try { history.replaceState(null, '', a.getAttribute('href')); } catch (e) {}
+        /* Focus follows the scroll so keyboard users continue from the
+           section they navigated to, not from the nav bar. */
+        target.setAttribute('tabindex', '-1');
+        try { target.focus({ preventScroll: true }); } catch (e) { target.focus(); }
       };
       burst(a.dataset.ch, a.dataset.name, null);
       go();
@@ -155,6 +193,7 @@
 
   /* ---------- Card title scramble ---------- */
   var GLYPHS = '#$%&@/\\<>=+*';
+  var scrambleFns = [];
   $$('[data-scramble]').forEach(function (el) {
     var real = el.textContent;
     var busy = false;
@@ -174,10 +213,25 @@
         if (frame >= total) { el.textContent = real; busy = false; return false; }
       });
     }
+    scrambleFns.push(scramble);
     var card = el.closest('.monitor') || el;
     card.addEventListener('mouseenter', scramble);
-    card.addEventListener('focus', scramble);
   });
+  /* Touch users never hover: run the scramble cascade once when the channels
+     grid first scrolls into view. */
+  try {
+    var chSec = document.getElementById('channels');
+    if (chSec && scrambleFns.length) {
+      var sio = new IntersectionObserver(function (es) {
+        es.forEach(function (en) {
+          if (!en.isIntersecting) return;
+          sio.disconnect();
+          scrambleFns.forEach(function (fn, i) { setTimeout(fn, i * 110); });
+        });
+      }, { threshold: 0.25 });
+      sio.observe(chSec);
+    }
+  } catch (e) {}
 
   /* ---------- Heavy tracking roll scheduler ---------- */
   var band = $('#trackband');
@@ -186,7 +240,7 @@
   function scheduleRoll() {
     if (RM || !band) return;
     setTimeout(function () {
-      if (!document.hidden && !fxLock) {
+      if (!document.hidden && !fxBusy()) {
         band.classList.remove('hm', 'hc', 'hy');
         band.classList.add(['hm', 'hc', 'hy'][(Math.random() * 3) | 0]);
         band.classList.add('heavy');
@@ -232,9 +286,10 @@
   var audioBtn = $('#audioBtn');
   var npTicker = $('#npTicker'), npText = $('#npText');
   var audioCtx = null, masterGain = null, comp = null, musicBus = null, sfxBus = null, delaySend = null;
-  var noiseBuf = null;
+  var noiseBuf = null, hissGain = null;
   var radioTimer = null, radioStep = 0, radioNextT = 0;
   var trackIdx = 0, trackTimer = null;
+  var autoOnAt = -1; /* when the primer (not a click) committed the radio on */
 
   var NOTE_IDX = { 'C': 0, 'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5, 'F#': 6, 'G': 7, 'G#': 8, 'A': 9, 'A#': 10, 'B': 11 };
   function freq(n) {
@@ -311,8 +366,8 @@
     for (var j = 0; j < hlen; j++) hch[j] = Math.random() * 2 - 1;
     var hiss = audioCtx.createBufferSource(); hiss.buffer = hbuf; hiss.loop = true;
     var hf = audioCtx.createBiquadFilter(); hf.type = 'lowpass'; hf.frequency.value = 6000;
-    var hg = audioCtx.createGain(); hg.gain.value = 0.01;
-    hiss.connect(hf); hf.connect(hg); hg.connect(comp);
+    hissGain = audioCtx.createGain(); hissGain.gain.value = 0.01;
+    hiss.connect(hf); hf.connect(hissGain); hissGain.connect(comp);
     hiss.start();
     return true;
   }
@@ -446,9 +501,10 @@
 
   function schedule() {
     var now = audioCtx.currentTime;
-    /* If the context was suspended (tab hidden, deferred autostart), snap the
-       cursor forward so we never flood with a burst of past-due notes. */
-    if (radioNextT < now - 0.2) radioNextT = now + 0.03;
+    /* Never schedule in the past: a skipped step is inaudible, but past-due
+       notes all fire at once as a flam. Covers both tab-sleep gaps and
+       main-thread stalls shorter than the old 0.2s snap threshold. */
+    if (radioNextT < now) radioNextT = now + 0.03;
     while (radioNextT < now + 0.12) {
       playStep(radioStep % 16, Math.floor(radioStep / 16), radioNextT);
       radioNextT += SPB;
@@ -471,14 +527,22 @@
     clearInterval(radioTimer); radioTimer = null;
     clearInterval(trackTimer); trackTimer = null;
     if (musicBus) musicBus.gain.setTargetAtTime(0.0001, audioCtx.currentTime, 0.1);
+    /* Kill the hiss floor too, then suspend so "off" really stops rendering
+       (battery, OS audio session) once the fades have finished. */
+    if (hissGain) hissGain.gain.setTargetAtTime(0.0001, audioCtx.currentTime, 0.1);
+    setTimeout(function () {
+      if (!AE.on && audioCtx && audioCtx.state === 'running') { try { audioCtx.suspend(); } catch (e) {} }
+    }, 500);
   }
 
   function applyAudioUI(on) {
     AE.on = on;
     if (audioBtn) {
-      audioBtn.innerHTML = on ? 'Skywave 99.9<span class="livedot"></span>' : 'FM 99.9 [Tune]';
+      /* On-state reads as a stop control, not just a station name */
+      audioBtn.innerHTML = on ? '■ 99.9 On Air<span class="livedot"></span>' : 'FM 99.9 [Tune]';
       audioBtn.classList.toggle('on', on);
       audioBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      audioBtn.setAttribute('aria-label', on ? 'Stop radio: ACI Skywave 99.9 FM' : 'Play radio: ACI Skywave 99.9 FM');
     }
     if (npTicker) npTicker.hidden = !on;
   }
@@ -487,7 +551,7 @@
      (a click / keydown / touchend / pointerdown, NOT a wheel or scroll), so
      committing the UI on running-state is what keeps the chip from claiming
      to play while silent. */
-  function setAudio(on) {
+  function setAudio(on, fromPrimer) {
     if (!on) {
       store.set('aci_audio', '0');
       if (audioCtx) radioOff();
@@ -496,8 +560,21 @@
     }
     if (!audioCtx && !buildAudio()) return;
     store.set('aci_audio', '1');
+    if (hissGain) hissGain.gain.setTargetAtTime(0.01, audioCtx.currentTime, 0.1);
     var settle = function () {
-      if (audioCtx.state === 'running') { radioOn(); applyAudioUI(true); return true; }
+      if (audioCtx.state === 'running') {
+        radioOn(); applyAudioUI(true);
+        if (fromPrimer) {
+          /* Auto-start: pull the eye to the chip so the sound has a visible
+             source and an obvious off switch. */
+          autoOnAt = performance.now();
+          if (audioBtn && !RM) {
+            audioBtn.classList.add('pulse');
+            setTimeout(function () { audioBtn.classList.remove('pulse'); }, 1600);
+          }
+        }
+        return true;
+      }
       return false;
     };
     var p = audioCtx.resume();
@@ -505,6 +582,10 @@
     if (p && p.then) p.then(settle).catch(function () {});
   }
   if (audioBtn) audioBtn.addEventListener('click', function () {
+    /* If the primer just committed the radio on during this same gesture
+       (pointerdown -> resume resolves -> click), the click's intent was
+       "turn it on" — don't immediately toggle it back off. */
+    if (AE.on && autoOnAt >= 0 && performance.now() - autoOnAt < 400) { audioWanted = true; return; }
     audioWanted = !AE.on;
     setAudio(audioWanted);
   });
@@ -519,22 +600,41 @@
   var SCROLL_KEYS = { 'ArrowDown': 1, 'PageDown': 1, 'End': 1, ' ': 1, 'Spacebar': 1 };
   var PRIME_EVENTS = ['wheel', 'scroll', 'keydown', 'touchmove', 'touchend', 'pointerdown'];
   var scrolledDown = false;
+  var primeStartY = 0, prevTouchY = null;
   function teardownPrimers() {
     PRIME_EVENTS.forEach(function (t) { window.removeEventListener(t, onAudioPrime, true); });
   }
   function onAudioPrime(e) {
     if (!audioWanted) { teardownPrimers(); return; }
     var t = e.type;
+    /* Gestures on the radio chip itself belong to its click handler. */
+    if (audioBtn && e.target && audioBtn.contains && audioBtn.contains(e.target)) return;
     if (t === 'wheel') { if (e.deltaY > 0) scrolledDown = true; }
-    else if (t === 'scroll') { if (window.scrollY > 4) scrolledDown = true; }
-    else if (t === 'keydown') { if (SCROLL_KEYS[e.key]) scrolledDown = true; }
-    else if (t === 'touchmove') { scrolledDown = true; }
+    else if (t === 'scroll') {
+      /* Direction from the landing position, not absolute offset: deep links
+         and restored scroll positions start below 4px without any intent. */
+      if (window.scrollY > primeStartY + 4) scrolledDown = true;
+    }
+    else if (t === 'keydown') {
+      /* Space while the boot curtain is up (skip) or while activating a
+         button/link is not scroll intent. */
+      if (boot || (e.target && e.target.closest && e.target.closest('button, a, input, textarea, select'))) return;
+      if (SCROLL_KEYS[e.key]) scrolledDown = true;
+    }
+    else if (t === 'touchmove') {
+      var y = e.touches && e.touches[0] ? e.touches[0].clientY : null;
+      if (y !== null) {
+        if (prevTouchY !== null && y < prevTouchY - 2) scrolledDown = true; /* finger up = page down */
+        prevTouchY = y;
+      }
+    }
     /* touchend / pointerdown carry no scroll intent of their own; they exist
        only to supply activation once the visitor has already scrolled. */
-    if (scrolledDown && !AE.on) setAudio(true);
+    if (scrolledDown && !AE.on) setAudio(true, true);
     if (AE.on) teardownPrimers();
   }
   if (audioWanted) {
+    primeStartY = window.scrollY;
     PRIME_EVENTS.forEach(function (t) {
       window.addEventListener(t, onAudioPrime, { passive: true, capture: true });
     });
@@ -586,6 +686,21 @@
       });
     });
   };
+  /* Answering-machine beep for Press Rec (two rising tones, then the "tone") */
+  AE.recTone = function () {
+    if (!audioCtx || !AE.on) return;
+    var t = audioCtx.currentTime;
+    [[t, 0.09, 'D5'], [t + 0.14, 0.09, 'F#5'], [t + 0.34, 0.5, 'A5']].forEach(function (n) {
+      var o = audioCtx.createOscillator(); o.type = 'sine'; o.frequency.value = freq(n[2]);
+      var g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.0001, n[0]);
+      g.gain.linearRampToValueAtTime(0.3, n[0] + 0.01);
+      g.gain.setValueAtTime(0.3, n[0] + n[1]);
+      g.gain.exponentialRampToValueAtTime(0.001, n[0] + n[1] + 0.06);
+      o.connect(g); g.connect(sfxBus);
+      o.start(n[0]); o.stop(n[0] + n[1] + 0.1);
+    });
+  };
   /* Engine drive-by: returns a pan setter fed by the car's x each frame */
   AE.engine = function (durSec) {
     if (!audioCtx || !AE.on) return null;
@@ -619,15 +734,38 @@
     return function (p) { if (pan) pan.pan.value = Math.max(-1, Math.min(1, p)); };
   };
 
-  /* ---------- Rewind button ---------- */
+  /* ---------- Rewind button: spool the tape counter back to 0:00:00 ---------- */
   var rew = $('#rewBtn');
   if (rew) rew.addEventListener('click', function () {
+    rew.classList.remove('blink');
     burst('CH 01', 'SIGNAL', null);
-    window.scrollTo({ top: 0, behavior: RM ? 'auto' : 'smooth' });
+    if (RM) {
+      t0 = Date.now();
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      return;
+    }
+    if (autotrack) { autotrack.textContent = '◀◀ REW'; autotrack.classList.add('on'); }
+    var el0 = Date.now() - t0;
+    var startT = null;
+    spooling = true;
+    addTask(function (t) {
+      if (startT === null) startT = t;
+      var k = Math.min((t - startT) / 1100, 1);
+      if (hudCounter) hudCounter.textContent = fmtCounter(Math.floor(el0 * (1 - k) / 1000));
+      if (k >= 1) {
+        t0 = Date.now();
+        spooling = false;
+        if (autotrack) { autotrack.classList.remove('on'); autotrack.textContent = 'Auto Tracking'; }
+        return false;
+      }
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
   /* ---------- Cheat code: degauss + the car ---------- */
-  var KONAMI = [38, 38, 40, 40, 37, 39, 37, 39, 66, 65];
+  /* e.key, not the deprecated e.keyCode: IME-driven keyboards (GBoard etc.)
+     report keyCode 0/229 for letters, which made B/A unmatchable there. */
+  var KONAMI = ['arrowup', 'arrowup', 'arrowdown', 'arrowdown', 'arrowleft', 'arrowright', 'arrowleft', 'arrowright', 'b', 'a'];
   var kbuf = [];
   var degauss = $('#degauss');
   function cheat() {
@@ -643,7 +781,7 @@
     }, 500);
   }
   document.addEventListener('keydown', function (e) {
-    kbuf.push(e.keyCode);
+    kbuf.push((e.key || '').toLowerCase());
     if (kbuf.length > KONAMI.length) kbuf.shift();
     if (kbuf.join(',') === KONAMI.join(',')) { kbuf = []; cheat(); }
   });
@@ -660,6 +798,40 @@
     });
   }
 
+  /* ---------- CH 06 — the transmission moment ---------- */
+  var btnRec = $('#btnRec'), stripMsg = $('#stripMsg');
+  if (btnRec) btnRec.addEventListener('click', function () {
+    /* mailto proceeds normally; this is the tape acknowledging the press */
+    if (stripMsg) stripMsg.textContent = '● REC — Transmission open';
+    if (recWrap) {
+      recWrap.classList.add('hot');
+      setTimeout(function () { recWrap.classList.remove('hot'); }, 8000);
+    }
+    if (AE.recTone) AE.recTone();
+  });
+  var copyBtn = $('#copyEmail');
+  if (copyBtn) copyBtn.addEventListener('click', function () {
+    /* mailto can silently dead-end on desktops with no mail client — the
+       address must always be catchable by hand. */
+    var addr = 'contactandrewcalebintl@gmail.com';
+    var ok = function () {
+      copyBtn.textContent = '[Copied]';
+      setTimeout(function () { copyBtn.textContent = '[Copy]'; }, 1800);
+    };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(addr).then(ok).catch(function () {});
+      } else {
+        var ta = document.createElement('textarea');
+        ta.value = addr; ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        document.execCommand('copy');
+        ta.remove(); ok();
+      }
+    } catch (e) {}
+  });
+
   /* ============================================================
      CH 02 — OPERATIONS FLEET TRACKER
      Real geography (Natural Earth), 7 heritage hubs, 4 flights,
@@ -668,7 +840,7 @@
      ============================================================ */
   var fleetSvg = $('#fleetMap');
   var mapActive = false;
-  if (fleetSvg && typeof WORLD_COUNTRIES !== 'undefined') (function () {
+  function buildFleetMap() {
     var NS = 'http://www.w3.org/2000/svg';
     var K = 1000 / 360;
     function X(lon) { return (lon + 180) * K; }
@@ -759,6 +931,7 @@
       tip.style.left = x + 'px'; tip.style.top = y + 'px';
     }
     function hideTip() { tip.hidden = true; }
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hideTip(); });
 
     /* Heritage hubs, verbatim from the original site */
     var HUBS = [
@@ -791,16 +964,32 @@
         'class': 'm-hub-label', 'text-anchor': h.left ? 'end' : 'start'
       }, g);
       lbl.textContent = h.key;
-      var hit = el('circle', { cx: x, cy: y, r: 12, 'class': 'm-hub-hit' }, g);
+      /* r=17 ≈ a 24px touch target at the frame's 720px minimum width, and
+         the hubs are real keyboard-reachable buttons, not pointer-only art. */
+      var hit = el('circle', { cx: x, cy: y, r: 17, 'class': 'm-hub-hit', tabindex: '0', role: 'button' }, g);
+      hit.setAttribute('aria-label', h.title + ', status: ' + h.status);
       var lines = [h.title, 'Status: ' + h.status, 'LAT: ' + h.lat.toFixed(2) + ' | LON: ' + h.lon.toFixed(2)];
-      hit.addEventListener('pointerenter', function (e) { showTip(lines, e.clientX, e.clientY); });
-      hit.addEventListener('pointerleave', hideTip);
-      hit.addEventListener('click', function (e) {
+      function hubPing(e) {
         bigPing(x, y);
         addLog('MANUAL PING, ' + h.key + ' ACKNOWLEDGED');
-        showTip(lines, e.clientX, e.clientY);
+        if (e && e.clientX) showTip(lines, e.clientX, e.clientY);
+        else {
+          var b = hit.getBoundingClientRect();
+          showTip(lines, b.left + b.width / 2, b.top + b.height / 2);
+        }
         setTimeout(hideTip, 1800);
+      }
+      hit.addEventListener('pointerenter', function (e) { showTip(lines, e.clientX, e.clientY); });
+      hit.addEventListener('pointerleave', hideTip);
+      hit.addEventListener('focus', function () {
+        var b = hit.getBoundingClientRect();
+        showTip(lines, b.left + b.width / 2, b.top + b.height / 2);
       });
+      hit.addEventListener('blur', hideTip);
+      hit.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); hubPing(null); }
+      });
+      hit.addEventListener('click', hubPing);
     });
 
     /* Routes + vehicles */
@@ -824,7 +1013,7 @@
       var hidden = el('path', { d: r.d, fill: 'none', stroke: 'none' }, routesG);
       var g = el('g', { 'class': 'm-vehicle' }, vehG);
       g.innerHTML = GLYPH[r.type];
-      var hit = el('circle', { r: 10, fill: 'transparent', 'pointer-events': 'all' }, g);
+      var hit = el('circle', { r: 17, fill: 'transparent', 'pointer-events': 'all' }, g);
       var v = { g: g, path: hidden, len: hidden.getTotalLength(), r: r, t: Math.random() * 0.7, dir: 1, dwell: 0 };
       vehicles.push(v);
       hit.addEventListener('pointerenter', function (e) {
@@ -853,16 +1042,20 @@
     el('path', { d: orbD + 'Z', 'class': 'm-route orb' }, routesG);
     var satG = el('g', { 'class': 'm-vehicle' }, vehG);
     satG.innerHTML = GLYPH.sat;
-    var satHit = el('circle', { r: 11, fill: 'transparent', 'pointer-events': 'all' }, satG);
+    var satHit = el('circle', { r: 17, fill: 'transparent', 'pointer-events': 'all' }, satG);
     satHit.addEventListener('pointerenter', function (e) { showTip(['ACI-SAT 001', 'ORBITAL RELAY', 'UPLINK: STABLE'], e.clientX, e.clientY); });
     satHit.addEventListener('pointerleave', hideTip);
     var satPh = Math.random() * Math.PI * 2;
 
     /* Motion */
+    var lastArrBlip = 0;
     function arrivalPing(v) {
       var P = v.path.getPointAtLength(v.len * v.t);
       var ring = el('circle', { cx: P.x, cy: P.y, r: 22, 'class': 'm-ping-big', stroke: '#00f2ff' }, hubsG);
       setTimeout(function () { ring.remove(); }, 950);
+      /* The world is audible when the radio is on (throttled: one soft blip) */
+      var n = Date.now();
+      if (AE.blip && n - lastArrBlip > 6000) { lastArrBlip = n; AE.blip(); }
     }
     if (RM) {
       vehicles.forEach(function (v) {
@@ -874,11 +1067,14 @@
       satG.setAttribute('transform', 'translate(' + sp0.x.toFixed(1) + ' ' + sp0.y.toFixed(1) + ')');
     } else {
       var lastT = null;
-      addTask(function (t) {
+      var mapEnrolled = false;
+      var mapTick = function (t) {
+        /* Self-remove when the section leaves the viewport so the shared rAF
+           loop can actually go idle; the IntersectionObserver re-enrolls us. */
+        if (!mapActive || RM) { lastT = null; mapEnrolled = false; return false; }
         if (lastT === null) lastT = t;
         var dt = Math.min((t - lastT) / 1000, 0.1);
         lastT = t;
-        if (!mapActive) return;
         vehicles.forEach(function (v) {
           if (v.dwell > 0) { v.dwell -= dt; return; }
           v.t += dt / v.r.secs * v.dir;
@@ -886,8 +1082,12 @@
           else if (v.t <= 0) { v.t = 0; v.dir = 1; v.dwell = 2.5; arrivalPing(v); }
           var L = v.len * v.t;
           var p1 = v.path.getPointAtLength(L);
-          var p2 = v.path.getPointAtLength(Math.min(L + 2, v.len));
-          var ang = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI;
+          /* Tangent from a window that stays on the path: at the far end the
+             old (p1, p1+2) pair collapsed to atan2(0,0) and snapped the
+             heading to 180° for the whole dock dwell. */
+          var Lb = Math.min(L + 2, v.len), La = Math.max(Lb - 2, 0);
+          var pA = v.path.getPointAtLength(La), pB = v.path.getPointAtLength(Lb);
+          var ang = Math.atan2(pB.y - pA.y, pB.x - pA.x) * 180 / Math.PI;
           if (v.dir === -1) ang += 180;
           v.g.setAttribute('transform', 'translate(' + p1.x.toFixed(1) + ' ' + p1.y.toFixed(1) + ') rotate(' + ang.toFixed(1) + ')');
         });
@@ -895,7 +1095,10 @@
         var sp = orbitPos(satPh), sp2 = orbitPos(satPh + 0.02);
         var sang = Math.atan2(sp2.y - sp.y, sp2.x - sp.x) * 180 / Math.PI;
         satG.setAttribute('transform', 'translate(' + sp.x.toFixed(1) + ' ' + sp.y.toFixed(1) + ') rotate(' + sang.toFixed(1) + ')');
-      });
+      };
+      var enrollMap = function () {
+        if (mapActive && !mapEnrolled) { mapEnrolled = true; addTask(mapTick); }
+      };
     }
 
     /* Pause everything when the section is off-screen */
@@ -904,10 +1107,14 @@
         es.forEach(function (e) {
           mapActive = e.isIntersecting && !RM;
           frame.classList.toggle('paused', !e.isIntersecting);
+          if (typeof enrollMap === 'function') enrollMap();
         });
       }, { threshold: 0.05 });
       mio.observe(frame);
-    } catch (e) { mapActive = !RM; }
+    } catch (e) {
+      mapActive = !RM;
+      if (typeof enrollMap === 'function') enrollMap();
+    }
 
     /* Crosshair + live LAT/LON readout (fine pointers only) */
     var coordsEl = $('#fleetCoords');
@@ -985,7 +1192,149 @@
     } else {
       addLog('UPLINK STABLE, ORBITAL RELAY');
     }
+
+    /* "Go Anywhere", literally: click any point on the map (not a hub) and
+       the nearest hub dispatches an asset there. The tracker stops being a
+       diorama and demos the actual service. */
+    var prosBusy = false;
+    fleetSvg.addEventListener('click', function (e) {
+      if (prosBusy || RM) return;
+      if (e.target.closest && (e.target.closest('.m-hub-hit') || e.target.closest('.m-vehicle'))) return;
+      var r = fleetSvg.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      var sx = (e.clientX - r.left) / r.width * 1000;
+      var sy = (e.clientY - r.top) / r.height * 460;
+      if (sx < 10 || sx > 990 || sy < 10 || sy > 450) return;
+      var best = null, bd = Infinity;
+      HUBS.forEach(function (h) {
+        var d = (h.x - sx) * (h.x - sx) + (h.y - sy) * (h.y - sy);
+        if (d < bd) { bd = d; best = h; }
+      });
+      if (!best || bd < 500) return; /* on top of the hub itself — nothing to fly */
+      prosBusy = true;
+      var country = e.target.closest ? e.target.closest('.m-country') : null;
+      var where = country ? country.dataset.n.toUpperCase() : 'OPEN WATER';
+      /* One quadratic arc, bowed away from the straight line like the fixed routes */
+      var mx = (best.x + sx) / 2;
+      var my = Math.min(best.y, sy) - Math.max(22, Math.abs(best.x - sx) * 0.16);
+      if (my < 8) my = 8;
+      var d2 = 'M' + best.x.toFixed(1) + ' ' + best.y.toFixed(1)
+        + ' Q' + mx.toFixed(1) + ' ' + my.toFixed(1)
+        + ' ' + sx.toFixed(1) + ' ' + sy.toFixed(1);
+      var pVis = el('path', { d: d2, 'class': 'm-route pros' }, routesG);
+      var pHid = el('path', { d: d2, fill: 'none', stroke: 'none' }, routesG);
+      var pg = el('g', { 'class': 'm-vehicle' }, vehG);
+      pg.innerHTML = GLYPH.flt;
+      var pLen = pHid.getTotalLength();
+      addLog('PROSPECT REQUEST, ' + where);
+      var pStart = null, pDur = Math.max(1800, pLen * 7);
+      addTask(function (t) {
+        if (pStart === null) pStart = t;
+        var k = Math.min((t - pStart) / pDur, 1);
+        var ee = k * k * (3 - 2 * k);
+        var L = pLen * ee;
+        var p1 = pHid.getPointAtLength(L);
+        var Lb = Math.min(L + 2, pLen), La = Math.max(Lb - 2, 0);
+        var pA = pHid.getPointAtLength(La), pB = pHid.getPointAtLength(Lb);
+        var ang = Math.atan2(pB.y - pA.y, pB.x - pA.x) * 180 / Math.PI;
+        pg.setAttribute('transform', 'translate(' + p1.x.toFixed(1) + ' ' + p1.y.toFixed(1) + ') rotate(' + ang.toFixed(1) + ')');
+        if (k >= 1) {
+          bigPing(sx, sy);
+          addLog('CONTACT ESTABLISHED, ' + where);
+          if (AE.blip) AE.blip();
+          setTimeout(function () {
+            pVis.remove(); pHid.remove(); pg.remove();
+            prosBusy = false;
+          }, 1400);
+          return false;
+        }
+      });
+    });
+
+    /* On phones the 720px frame pans inside the wrap; start it slightly
+       scrolled so land is clipped at BOTH edges — a visible cue that the map
+       moves (plus the explicit "drag to pan" line below the frame). */
+    var wrapEl = document.querySelector('.fleet-wrap');
+    if (wrapEl && wrapEl.scrollWidth > wrapEl.clientWidth + 40) wrapEl.scrollLeft = 70;
+  }
+
+  /* Building ~180 country paths + route geometry is real main-thread work for
+     a section a full viewport below the fold: defer it until the visitor is
+     approaching. The viewBox reserves the space, so there is zero CLS. */
+  if (fleetSvg && typeof WORLD_COUNTRIES !== 'undefined') {
+    var fleetBuilt = false;
+    var buildFleetOnce = function () {
+      if (fleetBuilt) return;
+      fleetBuilt = true;
+      try { buildFleetMap(); } catch (e) {}
+    };
+    try {
+      var bio = new IntersectionObserver(function (es) {
+        es.forEach(function (en) {
+          if (!en.isIntersecting) return;
+          bio.disconnect();
+          buildFleetOnce();
+        });
+      }, { rootMargin: '1200px 0px' });
+      bio.observe(document.getElementById('fleet'));
+    } catch (e) { buildFleetOnce(); }
+  }
+
+  /* ============================================================
+     CH 05 — SIGNAL ACQUISITION
+     If the build inlined a portrait (src/operator.b64), the classified feed
+     comes live the first time the operator section scrolls into view.
+     Without the image this whole block stays dormant.
+     ============================================================ */
+  (function () {
+    var feedEl = $('#opFeed');
+    var portrait = feedEl ? feedEl.querySelector('.portrait') : null;
+    if (!feedEl || !portrait) return;
+    var feedTag = $('#feedTag'), feedOsd = $('#feedOsd');
+    function acquire() {
+      feedEl.classList.add('live');
+      if (!RM) {
+        feedEl.classList.add('revealing');
+        setTimeout(function () { feedEl.classList.remove('revealing'); }, 1000);
+      }
+      if (feedOsd) feedOsd.innerHTML = '&#9654; Play';
+      if (feedTag) feedTag.textContent = 'Signal Acquired';
+      if (AE.blip) AE.blip();
+    }
+    try {
+      var oio = new IntersectionObserver(function (es) {
+        es.forEach(function (en) {
+          if (!en.isIntersecting) return;
+          oio.disconnect();
+          setTimeout(acquire, 350);
+        });
+      }, { threshold: 0.35 });
+      oio.observe(feedEl);
+    } catch (e) { acquire(); }
   })();
+
+  /* ============================================================
+     END OF TAPE — the page gets an ending, once, at the footer
+     ============================================================ */
+  try {
+    var footEl = $('.footer');
+    if (footEl) {
+      var fio = new IntersectionObserver(function (es) {
+        es.forEach(function (en) {
+          if (!en.isIntersecting) return;
+          fio.disconnect();
+          if (rew) rew.classList.add('blink');
+          if (!RM && chlabel && !fxBusy()) {
+            chlabel.querySelector('.num').textContent = 'END';
+            chlabel.querySelector('.name').textContent = 'OF TAPE 001';
+            chlabel.classList.add('on');
+            setTimeout(function () { chlabel.classList.remove('on'); }, 1700);
+          }
+        });
+      }, { threshold: 0.3 });
+      fio.observe(footEl);
+    }
+  } catch (e) {}
 
   /* ============================================================
      THE CAR — random cadence + cheat code, transform-only
@@ -1006,8 +1355,8 @@
       }
       return;
     }
-    if (carBusy || (fxLock && !fromCheat)) return;
-    fxLock = true; carBusy = true;
+    if (carBusy || (fxBusy() && !fromCheat)) return;
+    carBusy = true;
     car.classList.add('driving');
     var W = innerWidth;
     var small = W < 640;
@@ -1016,25 +1365,27 @@
     var from = -carW - 100, to = W + 90;
     var panSet = AE.engine ? AE.engine(dur / 1000) : null;
     var start = null, lastX = from, rot = 0;
+    function parkCar() {
+      car.classList.remove('driving');
+      car.style.transform = 'translateX(' + from + 'px)';
+      carBusy = false;
+    }
     addTask(function (t) {
-      if (start === null) start = t;
-      var k = Math.min((t - start) / dur, 1);
-      var e = 0.3 * (k * k * (3 - 2 * k)) + 0.7 * k;
-      var x = from + (to - from) * e;
-      var bob = Math.sin(t / 55) * 2;
-      car.style.transform = 'translateX(' + x.toFixed(1) + 'px) translateY(' + bob.toFixed(1) + 'px)';
-      rot += (x - lastX) * 3.37; /* deg per px for r=17 wheels */
-      lastX = x;
-      var rs = 'rotate(' + (rot % 360).toFixed(0) + ')';
-      if (wFs) wFs.setAttribute('transform', rs);
-      if (wRs) wRs.setAttribute('transform', rs);
-      if (panSet) panSet((x / W) * 2 - 1);
-      if (k >= 1) {
-        car.classList.remove('driving');
-        car.style.transform = 'translateX(' + from + 'px)';
-        fxLock = false; carBusy = false;
-        return false;
-      }
+      try {
+        if (start === null) start = t;
+        var k = Math.min((t - start) / dur, 1);
+        var e = 0.3 * (k * k * (3 - 2 * k)) + 0.7 * k;
+        var x = from + (to - from) * e;
+        var bob = Math.sin(t / 55) * 2;
+        car.style.transform = 'translateX(' + x.toFixed(1) + 'px) translateY(' + bob.toFixed(1) + 'px)';
+        rot += (x - lastX) * 3.37; /* deg per px for r=17 wheels */
+        lastX = x;
+        var rs = 'rotate(' + (rot % 360).toFixed(0) + ')';
+        if (wFs) wFs.setAttribute('transform', rs);
+        if (wRs) wRs.setAttribute('transform', rs);
+        if (panSet) panSet((x / W) * 2 - 1);
+        if (k >= 1) { parkCar(); return false; }
+      } catch (err) { parkCar(); return false; }
     });
   }
   (function schedCar() {

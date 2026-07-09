@@ -156,6 +156,9 @@ html.rm .hero-cue { animation: none; }
   max-width: 1180px;
   margin: 0 auto;
 }
+/* Sections receive programmatic focus after in-page nav (focus follows scroll
+   for keyboard users); no ring on the section box itself. */
+.channel:focus, .hero:focus { outline: none; }
 .channel::before {
   content: '';
   position: absolute; top: 0; left: 24px; right: 24px; height: 2px;
@@ -254,7 +257,7 @@ html.rm .hero-cue { animation: none; }
   overflow: clip;
   padding: 16px 18px;
   display: flex; flex-direction: column; justify-content: flex-end;
-  transition: box-shadow .18s ease, border-color .18s ease, transform .18s ease;
+  transition: box-shadow .18s ease, border-color .18s ease;
 }
 .monitor::before {
   content: '';
@@ -268,11 +271,12 @@ html.rm .hero-cue { animation: none; }
   opacity: 0;
   transition: opacity .12s steps(3, end);
 }
+/* Glow reads as ambience, not affordance: the cards are exhibits, not links,
+   so no lift and no tab stop. */
 .monitor:hover, .monitor:focus-within {
   border-color: var(--acc, var(--neon-pink));
   box-shadow: 0 0 0 1px var(--acc, var(--neon-pink)),
               0 0 22px color-mix(in srgb, var(--acc, var(--neon-pink)) 45%, transparent);
-  transform: translateY(-2px);
 }
 .monitor:hover::after, .monitor:focus-within::after { opacity: .1; }
 html.rm .monitor:hover::after { opacity: 0; }
@@ -353,23 +357,44 @@ html.rm .monitor.nosignal .staticbg { animation: none; }
 }
 .feed::before {
   content: '';
-  position: absolute; inset: 0;
+  position: absolute; inset: 0; z-index: 2;
   background: repeating-linear-gradient(0deg, rgba(0,0,0,.2) 0 2px, transparent 2px 5px);
   pointer-events: none;
 }
 .feed::after {
   content: '';
-  position: absolute; inset: 0;
+  position: absolute; inset: 0; z-index: 2;
   background-image: var(--noise);
   opacity: .07; pointer-events: none;
 }
 .feed .silhouette { width: 62%; height: auto; color: #120A26; filter: drop-shadow(0 0 30px rgba(43,240,230,.15)); }
-.feed .osd-top { position: absolute; top: 10px; left: 14px; font-size: 17px; }
-.feed .osd-bottom { position: absolute; bottom: 10px; right: 14px; font-size: 16px; color: rgba(233,237,245,.7); }
+/* Operator portrait (inlined at build time when src/operator.b64 exists).
+   Hidden until the signal-acquisition reveal fires; scanlines + noise stay on
+   top so the photo reads as a surveillance feed, not a headshot. */
+.feed .portrait {
+  position: absolute; inset: 0; z-index: 1;
+  width: 100%; height: 100%; object-fit: cover;
+  opacity: 0;
+  filter: saturate(1.15) contrast(1.05);
+}
+.feed.live .silhouette { visibility: hidden; }
+.feed.live .portrait { opacity: 1; }
+.feed.revealing .portrait { animation: pflicker .95s steps(7, end) both; }
+.feed.revealing::after { animation: pnoise .95s steps(7, end) both; }
+@keyframes pflicker {
+  0% { opacity: 0; } 18% { opacity: .45; } 34% { opacity: .12; }
+  52% { opacity: .8; } 68% { opacity: .55; } 100% { opacity: 1; }
+}
+@keyframes pnoise {
+  0% { opacity: .85; } 55% { opacity: .35; } 100% { opacity: .07; }
+}
+html.rm .feed.revealing .portrait, html.rm .feed.revealing::after { animation: none; }
+.feed .osd-top { position: absolute; top: 10px; left: 14px; font-size: 17px; z-index: 3; }
+.feed .osd-bottom { position: absolute; bottom: 10px; right: 14px; font-size: 16px; color: rgba(233,237,245,.7); z-index: 3; }
 .feed .osd-classified {
   position: absolute; bottom: 12px; left: 14px;
   font-size: 16px; color: var(--signal-cyan);
-  letter-spacing: .2em;
+  letter-spacing: .2em; z-index: 3;
 }
 .dossier p { margin-bottom: 16px; max-width: 58ch; color: rgba(244,246,255,.97); }
 .dossier .readout {
@@ -447,6 +472,17 @@ html.rm .monitor.nosignal .staticbg { animation: none; }
   text-decoration-color: rgba(255,204,0,.6);
   overflow-wrap: anywhere;
 }
+.copy-email {
+  background: none; cursor: pointer;
+  border: 1px solid rgba(0,242,255,.5);
+  color: var(--signal-cyan);
+  font-family: var(--font-osd); font-size: 15px;
+  letter-spacing: .12em; text-transform: uppercase;
+  padding: 3px 10px 1px; margin-left: 10px;
+  vertical-align: 2px;
+  transition: box-shadow .18s ease;
+}
+.copy-email:hover { box-shadow: 0 0 12px rgba(0,242,255,.4); }
 .tape-card .actions {
   display: flex; align-items: center; justify-content: space-between;
   gap: 18px; flex-wrap: wrap;
@@ -526,6 +562,8 @@ html.rm .btn-rec .dot { animation: none; }
   transition: background-color .18s ease, box-shadow .18s ease;
 }
 .footer .rewind:hover { background: rgba(255,204,0,.1); box-shadow: 0 0 18px rgba(255,204,0,.3); }
+.footer .rewind.blink { animation: osdblink 1.1s steps(1) infinite; }
+html.rm .footer .rewind.blink { animation: none; }
 .footer p { color: rgba(244,246,255,.85); font-size: .92rem; margin-bottom: 6px; }
 .footer .signoff {
   font-family: var(--font-osd);
@@ -609,15 +647,28 @@ html.rm .btn-rec .dot { animation: none; }
 .fleet-log .ll .t { color: var(--osd-amber); }
 .fleet-log .ll .v { color: var(--signal-cyan); }
 .fleet-log .ll .h { color: #ff7bff; }
-.fleet-log .ll.old { opacity: .35; }
+.fleet-log .ll.old { opacity: .7; } /* .35 failed 4.5:1 contrast on all three hues */
 .fleet-actions { display: flex; justify-content: center; margin-top: 28px; }
+/* Mobile-only cue that the map pans (the frame is wider than the phone) */
+.fleet-pan {
+  display: none;
+  text-align: center;
+  margin-top: 8px;
+  font-family: var(--font-osd); font-size: 15px;
+  letter-spacing: .18em; text-transform: uppercase;
+  color: rgba(255,204,0,.75);
+}
 
 /* Map SVG layers */
 .m-grat { fill: none; stroke: #00f2ff; stroke-width: .5; opacity: .12; }
 .m-grat-main { fill: none; stroke: #00f2ff; stroke-width: .5; opacity: .22; }
 .m-landglow { fill: none; stroke: #ff00ff; stroke-width: 2.5; opacity: .5; filter: url(#fGlow); }
 .m-country { fill: #2a0d52; stroke: none; transition: fill .12s ease; }
-.m-country:hover, .m-country.lit {
+/* Hover keeps a single cheap glow (sweeping the pointer across the map fires
+   this per country); the double-blur halo is reserved for the one clicked
+   (.lit) country. */
+.m-country:hover { fill: #19f7ff; filter: drop-shadow(0 0 6px #00f2ff); }
+.m-country.lit {
   fill: #19f7ff;
   filter: drop-shadow(0 0 6px #00f2ff) drop-shadow(0 0 16px rgba(0,242,255,.7));
 }
@@ -629,6 +680,7 @@ html.rm .btn-rec .dot { animation: none; }
 .m-route.flt { stroke: #00f2ff; stroke-width: 1.2; stroke-dasharray: 6 7; opacity: .7; animation: dashflt 1.4s linear infinite; }
 .m-route.sea { stroke: #ffcc00; stroke-width: 1.2; stroke-dasharray: 2 6; opacity: .65; animation: dashsea 3s linear infinite; }
 .m-route.orb { stroke: #ffffff; stroke-width: 1; stroke-dasharray: 1 9; opacity: .45; animation: dashorb 4s linear infinite; }
+.m-route.pros { stroke: #ff7bff; stroke-width: 1.3; stroke-dasharray: 4 6; opacity: .9; animation: dashflt 1.1s linear infinite; }
 @keyframes dashflt { to { stroke-dashoffset: -26; } }
 @keyframes dashsea { to { stroke-dashoffset: -24; } }
 @keyframes dashorb { to { stroke-dashoffset: -20; } }
@@ -636,6 +688,8 @@ html.rm .btn-rec .dot { animation: none; }
 .m-hub-inner { fill: #ffffff; }
 .m-hub-label { fill: #ffffff; opacity: 1; font-family: var(--font-osd); font-size: 12px; letter-spacing: 1px; text-shadow: 0 0 6px rgba(0,242,255,.8); pointer-events: none; }
 .m-hub-hit { fill: transparent; cursor: pointer; pointer-events: all; }
+.m-hub-hit:focus { outline: none; }
+.m-hub-hit:focus-visible { stroke: var(--signal-cyan); stroke-width: 1.5; }
 .m-ping {
   fill: none; stroke: #ff00ff; stroke-width: 1.5;
   transform-box: fill-box; transform-origin: center;
@@ -705,13 +759,17 @@ html.rm #carLane.rm-show { display: block; }
   .hud .tr .sp { display: none; }
   .hud .br { background: rgba(10,6,20,.68); padding: 5px 10px 3px; border-radius: 6px; border: 1px solid rgba(255,179,0,.18); }
   .tapenav {
-    top: 42px; gap: 8px; padding: 5px 12px 3px;
+    top: 42px; gap: 7px; padding: 5px 10px 3px;
     background: rgba(10,6,20,.78);
     border: 1px solid rgba(255,61,166,.2);
     border-radius: 8px;
     width: max-content; max-width: calc(100vw - 16px);
+    overflow-x: auto;
+    scrollbar-width: none;
   }
-  .tapenav a { font-size: 16px; letter-spacing: .05em; }
+  .tapenav::-webkit-scrollbar { display: none; }
+  .tapenav a { font-size: 15px; letter-spacing: .04em; flex: none; }
+  .fleet-pan { display: block; }
   .hero { padding-top: 122px; }
   .hero-cue { bottom: 74px; }
   .hero-tagline { letter-spacing: .16em; }
@@ -723,8 +781,33 @@ html.rm #carLane.rm-show { display: block; }
   .fleet-log { font-size: 16px; }
 }
 
-/* Reduced motion: the look survives fully static */
+/* Reduced motion: the look survives fully static.
+   These duplicate the html.rm rules so the OS setting works at the CSS level
+   even when JS never runs (the .rm class also feeds the on-page FX toggle). */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+  .fx-flicker { animation: none; }
+  .fx-trackband { display: none; }
+  .page.hjitter { animation: none; }
+  .boot .play, .boot .skip { animation: none; }
+  .boot .track { display: none; }
+  .hud .recdot,
+  .hud .audio-btn.on .livedot,
+  .hud .audio-btn.pulse { animation: none; }
+  .hud .np .np-inner { animation: none; padding-left: 0; }
+  .hero-h1 .glitch::before, .hero-h1 .glitch::after { animation: none; content: none; }
+  .hero-grid { animation: none; }
+  .hero-cue { animation: none; }
+  .monitor:hover::after { opacity: 0; }
+  .badge-live { animation: none; }
+  .monitor.nosignal .staticbg { animation: none; }
+  .feed.revealing .portrait, .feed.revealing::after { animation: none; }
+  .btn-rec .dot { animation: none; }
+  .footer .rewind.blink { animation: none; }
+  .m-sweep { display: none; }
+  .m-route { animation: none; }
+  .m-ping { animation: none; transform: scale(.8); opacity: .3; }
+  #carLane { display: none; }
+  .car-underglow { animation: none; }
 }
 </style>

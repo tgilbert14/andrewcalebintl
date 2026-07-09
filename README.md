@@ -22,6 +22,10 @@ node build.js
 
 Outputs `index.html` (the site, served by GitHub Pages from the repo root) and `fragment.html` (headless copy for artifact embeds, gitignored).
 
+Optional: drop a base64-encoded JPEG at `src/operator.b64` and the build inlines it as the Operator portrait — the CH 05 feed then plays a one-time "signal acquisition" reveal when scrolled into view. Without the file, the classified silhouette ships and the reveal code stays dormant.
+
+`og.png` is the social-share card (referenced by `og:image`; fetched by link scrapers only, never by the page itself — the zero-external-request rule holds at runtime).
+
 Map geometry is derived from [Natural Earth](https://www.naturalearthdata.com/) (public domain) via `world-atlas` 110m, pre-baked into `src/04-mapdata.js`.
 
 Fonts (Audiowide, Yellowtail, VT323, all OFL) are embedded as base64 woff2 latin subsets in `src/fonts/`.

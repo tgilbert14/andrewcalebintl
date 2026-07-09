@@ -16,6 +16,14 @@ let html = ['01-style-a.html', '02-style-b.html', '03-body.html', '05-app.html']
 const mapData = fs.readFileSync(src('04-mapdata.js'), 'utf8');
 html = html.replace('/*__MAPDATA__*/', mapData);
 
+// Operator portrait: inlined when src/operator.b64 exists (jpeg base64), else
+// the feed keeps its classified silhouette and the reveal code stays dormant.
+const opPath = src('operator.b64');
+html = html.replace('<!--OPERATOR-->', fs.existsSync(opPath)
+  ? '<img class="portrait" alt="Andrew Caleb, the operator" src="data:image/jpeg;base64,'
+    + fs.readFileSync(opPath, 'utf8').trim() + '">'
+  : '');
+
 // Fonts
 for (const [ph, file] of [
   ['__AUDIOWIDE__', 'fonts/audiowide.b64'],
@@ -31,15 +39,34 @@ if (/__[A-Z]+__/.test(html)) {
 }
 
 fs.writeFileSync(path.join(__dirname, 'fragment.html'), html);
+
+// index.html gets a real <head>: hoist the fragment's <title> up (it stays in
+// fragment.html so artifact embeds keep their tab name), plus icon/theme/social
+// meta and a no-JS escape hatch for the boot overlay.
+const DESC = 'Andrew Caleb International. Go Anywhere, Meet Anyone. Global prospecting, fleet tracking, and ventures worldwide.';
+const FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23120230'/%3E%3Cpolygon points='22,16 50,32 22,48' fill='%23ff00ff'/%3E%3Cpolygon points='18,16 46,32 18,48' fill='%2300f2ff' opacity='.55'/%3E%3C/svg%3E";
+const bodyHtml = html.replace(/^<title>.*?<\/title>\s*/, '');
 const wrapped = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Andrew Caleb International. Go Anywhere, Meet Anyone. Global prospecting, fleet tracking, and ventures worldwide.">
+<title>Andrew Caleb International</title>
+<meta name="description" content="${DESC}">
+<meta name="theme-color" content="#120230">
+<link rel="icon" href="${FAVICON}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Andrew Caleb International">
+<meta property="og:description" content="${DESC}">
+<meta property="og:url" content="https://www.andrewcalebintl.com/">
+<meta property="og:image" content="https://www.andrewcalebintl.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<noscript><style>.boot{display:none}.fleet-wrap,.fleet-log,.fleet-actions{display:none}</style></noscript>
 </head>
 <body>
-${html}
+${bodyHtml}
 </body>
 </html>
 `;
