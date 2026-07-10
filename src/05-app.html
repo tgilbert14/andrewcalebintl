@@ -816,6 +816,20 @@
       o.start(n[0]); o.stop(n[0] + n[1] + 0.1);
     });
   };
+  /* Soft static swell matching the feed's signal-drift visual */
+  AE.staticDrift = function (durSec) {
+    if (!audioCtx || !AE.on) return;
+    var t = audioCtx.currentTime;
+    var src = audioCtx.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+    var bp = audioCtx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2400; bp.Q.value = 0.4;
+    var g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.085, t + durSec * 0.42);
+    g.gain.setValueAtTime(0.085, t + durSec * 0.6);
+    g.gain.linearRampToValueAtTime(0.0001, t + durSec);
+    src.connect(bp); bp.connect(g); g.connect(sfxBus);
+    src.start(t); src.stop(t + durSec + 0.05);
+  };
   /* Engine drive-by: returns a pan setter fed by the car's x each frame */
   AE.engine = function (durSec) {
     if (!audioCtx || !AE.on) return null;
@@ -1399,9 +1413,9 @@
      CH 05 — SIGNAL ACQUISITION + TAPE TRACKING
      If the build inlined portraits (src/profile.b64 [+ profile_alt.b64]),
      the classified feed comes live on first scroll-in. With both feeds:
-     tap/Enter retunes between feed A (shades) and feed B (off the record),
-     and every so often the tracking slips and the OTHER frame bleeds
-     through for a blink. Without images this block stays dormant.
+     tap/Enter drifts between feed A (shades) and feed B (off the record)
+     through a slow static-TV handoff, and left alone the tape wanders
+     between the two on its own. Without images this block stays dormant.
      ============================================================ */
   (function () {
     var feedEl = $('#opFeed');
@@ -1410,7 +1424,7 @@
     if (!feedEl || !feedA) return;
     var feedTag = $('#feedTag'), feedOsd = $('#feedOsd');
     var revealed = false, feedVisible = false, tuned = false, everTuned = false;
-    var glitchT = null;
+    var driftBusy = false;
 
     function setTag() {
       if (feedTag) {
@@ -1420,46 +1434,39 @@
       feedEl.setAttribute('aria-pressed', tuned ? 'true' : 'false');
     }
 
-    /* ~460ms of tracking-band + noise dressing; cb runs at the cut point */
-    function glitchPulse(cb) {
-      feedEl.classList.remove('glitching');
-      void feedEl.offsetWidth; /* restart the band animation */
-      feedEl.classList.add('glitching');
-      clearTimeout(glitchT);
-      if (cb) setTimeout(cb, 140);
-      glitchT = setTimeout(function () { feedEl.classList.remove('glitching'); }, 460);
-    }
-
-    function retune() {
-      if (!revealed || !feedB) return;
-      everTuned = true;
+    /* The slow static-TV handoff: static swells and boils (~1.1s), the
+       photos crossfade under the peak, the static settles (~1.3s). Manual
+       taps and the idle wander both come through here. */
+    function drift(manual) {
+      if (!revealed || !feedB || driftBusy) return;
+      if (manual) everTuned = true;
       if (RM) {
         tuned = !tuned;
         feedEl.classList.toggle('altfeed', tuned);
         setTag();
         return;
       }
-      if (AE.blip) AE.blip();
-      glitchPulse(function () {
+      driftBusy = true;
+      feedEl.classList.add('drifting');
+      if (AE.staticDrift) AE.staticDrift(2.4);
+      setTimeout(function () {
         tuned = !tuned;
         feedEl.classList.toggle('altfeed', tuned);
         setTag();
-      });
+      }, 1100);
+      setTimeout(function () {
+        feedEl.classList.remove('drifting');
+        driftBusy = false;
+      }, 2450);
     }
 
-    /* The other recording bleeds through for a blink now and then */
-    (function schedSlip() {
+    /* Left alone, the tape wanders between the two recordings */
+    (function schedDrift() {
       if (!feedB) return;
       setTimeout(function () {
-        if (revealed && feedVisible && !RM && !document.hidden) {
-          glitchPulse(null);
-          feedEl.classList.add('peek');
-          setTimeout(function () { feedEl.classList.remove('peek'); }, 110);
-          setTimeout(function () { feedEl.classList.add('peek'); }, 190);
-          setTimeout(function () { feedEl.classList.remove('peek'); }, 320);
-        }
-        schedSlip();
-      }, 8000 + Math.random() * 9000);
+        if (revealed && feedVisible && !RM && !document.hidden) drift(false);
+        schedDrift();
+      }, 16000 + Math.random() * 10000);
     })();
 
     function acquire() {
@@ -1481,9 +1488,9 @@
       setTag();
     }
 
-    feedEl.addEventListener('click', retune);
+    feedEl.addEventListener('click', function () { drift(true); });
     feedEl.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); retune(); }
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); drift(true); }
     });
 
     try {

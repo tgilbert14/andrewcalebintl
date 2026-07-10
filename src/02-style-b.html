@@ -377,14 +377,12 @@ html.rm .monitor.nosignal .staticbg { animation: none; }
   width: 100%; height: 100%; object-fit: cover;
   opacity: 0;
   filter: saturate(1.15) contrast(1.05);
+  /* The feed A<->B crossfade happens under peak static during a drift */
+  transition: opacity .9s ease;
 }
 .feed.live .silhouette { visibility: hidden; }
 .feed.live .portrait.feed-a { opacity: 1; }
-/* B shows when tuned (.altfeed) OR during a momentary tracking slip (.peek);
-   peek is an XOR so a slip always cuts to whichever feed is NOT showing. */
-.feed.live.altfeed .portrait.feed-b,
-.feed.live.peek .portrait.feed-b { opacity: 1; }
-.feed.live.altfeed.peek .portrait.feed-b { opacity: 0; }
+.feed.live.altfeed .portrait.feed-b { opacity: 1; }
 .feed.live.tunable { cursor: pointer; }
 .feed:focus-visible { outline: 2px solid var(--signal-cyan); outline-offset: 3px; }
 .feed.revealing .portrait.feed-a { animation: pflicker .95s steps(7, end) both; }
@@ -397,25 +395,42 @@ html.rm .monitor.nosignal .staticbg { animation: none; }
   0% { opacity: .85; } 55% { opacity: .35; } 100% { opacity: .07; }
 }
 html.rm .feed.revealing .portrait.feed-a, html.rm .feed.revealing::after { animation: none; }
-/* Glitch dressing while a slip or retune is in flight: a tracking band rolls
-   down the frame, the noise floor jumps, colors push hot for a beat. */
+/* Signal drift: the slow static-TV handoff between the two feeds. Over
+   ~2.4s the noise floor swells until static owns the frame, boiling the
+   whole time (background-position steps), a soft tracking band rolls down
+   once, the photos crossfade under the peak, and the static settles. */
 .feed .vband {
-  position: absolute; left: 0; right: 0; top: -22%; height: 44px;
+  position: absolute; left: 0; right: 0; top: -22%; height: 60px;
   z-index: 2; pointer-events: none; opacity: 0;
   background: linear-gradient(180deg,
     transparent 0%,
-    rgba(233,237,245,.13) 42%,
-    rgba(43,240,230,.09) 60%,
+    rgba(233,237,245,.10) 42%,
+    rgba(43,240,230,.06) 60%,
     transparent 100%);
   mix-blend-mode: screen;
 }
-.feed.glitching .vband { opacity: 1; animation: feedband .45s linear 1; }
+.feed.drifting .vband { opacity: 1; animation: feedband 2.4s linear 1; }
 @keyframes feedband { from { top: -22%; } to { top: 104%; } }
-.feed.glitching::after { opacity: .4; }
-.feed.glitching .portrait { filter: saturate(1.4) contrast(1.2) hue-rotate(8deg); }
+.feed.drifting::after {
+  animation: driftnoise 2.4s ease-in-out 1 both, staticboil .5s steps(5) infinite;
+}
+@keyframes driftnoise {
+  0% { opacity: .07; }
+  40% { opacity: .82; }
+  62% { opacity: .82; }
+  100% { opacity: .07; }
+}
+@keyframes staticboil {
+  0% { background-position: 0 0; }
+  25% { background-position: -90px 60px; }
+  50% { background-position: 70px -40px; }
+  75% { background-position: -40px -80px; }
+  100% { background-position: 90px 30px; }
+}
+.feed.drifting .portrait { filter: saturate(1.25) contrast(1.1); }
 html.rm .feed .vband { display: none; }
-html.rm .feed.glitching::after { opacity: .07; }
-html.rm .feed.glitching .portrait { filter: saturate(1.15) contrast(1.05); }
+html.rm .feed.drifting::after { animation: none; opacity: .07; }
+html.rm .feed .portrait { transition: none; }
 .feed .osd-top { position: absolute; top: 10px; left: 14px; font-size: 17px; z-index: 3; }
 .feed .osd-bottom { position: absolute; bottom: 10px; right: 14px; font-size: 16px; color: rgba(233,237,245,.7); z-index: 3; }
 .feed .osd-classified {
@@ -830,6 +845,8 @@ html.rm #carLane.rm-show { display: block; }
   .monitor.nosignal .staticbg { animation: none; }
   .feed.revealing .portrait.feed-a, .feed.revealing::after { animation: none; }
   .feed .vband { display: none; }
+  .feed.drifting::after { animation: none; opacity: .07; }
+  .feed .portrait { transition: none; }
   .btn-rec .dot { animation: none; }
   .footer .rewind.blink { animation: none; }
   .m-sweep { display: none; }

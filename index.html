@@ -874,14 +874,12 @@ html.rm .monitor.nosignal .staticbg { animation: none; }
   width: 100%; height: 100%; object-fit: cover;
   opacity: 0;
   filter: saturate(1.15) contrast(1.05);
+  /* The feed A<->B crossfade happens under peak static during a drift */
+  transition: opacity .9s ease;
 }
 .feed.live .silhouette { visibility: hidden; }
 .feed.live .portrait.feed-a { opacity: 1; }
-/* B shows when tuned (.altfeed) OR during a momentary tracking slip (.peek);
-   peek is an XOR so a slip always cuts to whichever feed is NOT showing. */
-.feed.live.altfeed .portrait.feed-b,
-.feed.live.peek .portrait.feed-b { opacity: 1; }
-.feed.live.altfeed.peek .portrait.feed-b { opacity: 0; }
+.feed.live.altfeed .portrait.feed-b { opacity: 1; }
 .feed.live.tunable { cursor: pointer; }
 .feed:focus-visible { outline: 2px solid var(--signal-cyan); outline-offset: 3px; }
 .feed.revealing .portrait.feed-a { animation: pflicker .95s steps(7, end) both; }
@@ -894,25 +892,42 @@ html.rm .monitor.nosignal .staticbg { animation: none; }
   0% { opacity: .85; } 55% { opacity: .35; } 100% { opacity: .07; }
 }
 html.rm .feed.revealing .portrait.feed-a, html.rm .feed.revealing::after { animation: none; }
-/* Glitch dressing while a slip or retune is in flight: a tracking band rolls
-   down the frame, the noise floor jumps, colors push hot for a beat. */
+/* Signal drift: the slow static-TV handoff between the two feeds. Over
+   ~2.4s the noise floor swells until static owns the frame, boiling the
+   whole time (background-position steps), a soft tracking band rolls down
+   once, the photos crossfade under the peak, and the static settles. */
 .feed .vband {
-  position: absolute; left: 0; right: 0; top: -22%; height: 44px;
+  position: absolute; left: 0; right: 0; top: -22%; height: 60px;
   z-index: 2; pointer-events: none; opacity: 0;
   background: linear-gradient(180deg,
     transparent 0%,
-    rgba(233,237,245,.13) 42%,
-    rgba(43,240,230,.09) 60%,
+    rgba(233,237,245,.10) 42%,
+    rgba(43,240,230,.06) 60%,
     transparent 100%);
   mix-blend-mode: screen;
 }
-.feed.glitching .vband { opacity: 1; animation: feedband .45s linear 1; }
+.feed.drifting .vband { opacity: 1; animation: feedband 2.4s linear 1; }
 @keyframes feedband { from { top: -22%; } to { top: 104%; } }
-.feed.glitching::after { opacity: .4; }
-.feed.glitching .portrait { filter: saturate(1.4) contrast(1.2) hue-rotate(8deg); }
+.feed.drifting::after {
+  animation: driftnoise 2.4s ease-in-out 1 both, staticboil .5s steps(5) infinite;
+}
+@keyframes driftnoise {
+  0% { opacity: .07; }
+  40% { opacity: .82; }
+  62% { opacity: .82; }
+  100% { opacity: .07; }
+}
+@keyframes staticboil {
+  0% { background-position: 0 0; }
+  25% { background-position: -90px 60px; }
+  50% { background-position: 70px -40px; }
+  75% { background-position: -40px -80px; }
+  100% { background-position: 90px 30px; }
+}
+.feed.drifting .portrait { filter: saturate(1.25) contrast(1.1); }
 html.rm .feed .vband { display: none; }
-html.rm .feed.glitching::after { opacity: .07; }
-html.rm .feed.glitching .portrait { filter: saturate(1.15) contrast(1.05); }
+html.rm .feed.drifting::after { animation: none; opacity: .07; }
+html.rm .feed .portrait { transition: none; }
 .feed .osd-top { position: absolute; top: 10px; left: 14px; font-size: 17px; z-index: 3; }
 .feed .osd-bottom { position: absolute; bottom: 10px; right: 14px; font-size: 16px; color: rgba(233,237,245,.7); z-index: 3; }
 .feed .osd-classified {
@@ -1327,6 +1342,8 @@ html.rm #carLane.rm-show { display: block; }
   .monitor.nosignal .staticbg { animation: none; }
   .feed.revealing .portrait.feed-a, .feed.revealing::after { animation: none; }
   .feed .vband { display: none; }
+  .feed.drifting::after { animation: none; opacity: .07; }
+  .feed .portrait { transition: none; }
   .btn-rec .dot { animation: none; }
   .footer .rewind.blink { animation: none; }
   .m-sweep { display: none; }
@@ -2547,6 +2564,20 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
       o.start(n[0]); o.stop(n[0] + n[1] + 0.1);
     });
   };
+  /* Soft static swell matching the feed's signal-drift visual */
+  AE.staticDrift = function (durSec) {
+    if (!audioCtx || !AE.on) return;
+    var t = audioCtx.currentTime;
+    var src = audioCtx.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+    var bp = audioCtx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2400; bp.Q.value = 0.4;
+    var g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.085, t + durSec * 0.42);
+    g.gain.setValueAtTime(0.085, t + durSec * 0.6);
+    g.gain.linearRampToValueAtTime(0.0001, t + durSec);
+    src.connect(bp); bp.connect(g); g.connect(sfxBus);
+    src.start(t); src.stop(t + durSec + 0.05);
+  };
   /* Engine drive-by: returns a pan setter fed by the car's x each frame */
   AE.engine = function (durSec) {
     if (!audioCtx || !AE.on) return null;
@@ -3130,9 +3161,9 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
      CH 05 — SIGNAL ACQUISITION + TAPE TRACKING
      If the build inlined portraits (src/profile.b64 [+ profile_alt.b64]),
      the classified feed comes live on first scroll-in. With both feeds:
-     tap/Enter retunes between feed A (shades) and feed B (off the record),
-     and every so often the tracking slips and the OTHER frame bleeds
-     through for a blink. Without images this block stays dormant.
+     tap/Enter drifts between feed A (shades) and feed B (off the record)
+     through a slow static-TV handoff, and left alone the tape wanders
+     between the two on its own. Without images this block stays dormant.
      ============================================================ */
   (function () {
     var feedEl = $('#opFeed');
@@ -3141,7 +3172,7 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
     if (!feedEl || !feedA) return;
     var feedTag = $('#feedTag'), feedOsd = $('#feedOsd');
     var revealed = false, feedVisible = false, tuned = false, everTuned = false;
-    var glitchT = null;
+    var driftBusy = false;
 
     function setTag() {
       if (feedTag) {
@@ -3151,46 +3182,39 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
       feedEl.setAttribute('aria-pressed', tuned ? 'true' : 'false');
     }
 
-    /* ~460ms of tracking-band + noise dressing; cb runs at the cut point */
-    function glitchPulse(cb) {
-      feedEl.classList.remove('glitching');
-      void feedEl.offsetWidth; /* restart the band animation */
-      feedEl.classList.add('glitching');
-      clearTimeout(glitchT);
-      if (cb) setTimeout(cb, 140);
-      glitchT = setTimeout(function () { feedEl.classList.remove('glitching'); }, 460);
-    }
-
-    function retune() {
-      if (!revealed || !feedB) return;
-      everTuned = true;
+    /* The slow static-TV handoff: static swells and boils (~1.1s), the
+       photos crossfade under the peak, the static settles (~1.3s). Manual
+       taps and the idle wander both come through here. */
+    function drift(manual) {
+      if (!revealed || !feedB || driftBusy) return;
+      if (manual) everTuned = true;
       if (RM) {
         tuned = !tuned;
         feedEl.classList.toggle('altfeed', tuned);
         setTag();
         return;
       }
-      if (AE.blip) AE.blip();
-      glitchPulse(function () {
+      driftBusy = true;
+      feedEl.classList.add('drifting');
+      if (AE.staticDrift) AE.staticDrift(2.4);
+      setTimeout(function () {
         tuned = !tuned;
         feedEl.classList.toggle('altfeed', tuned);
         setTag();
-      });
+      }, 1100);
+      setTimeout(function () {
+        feedEl.classList.remove('drifting');
+        driftBusy = false;
+      }, 2450);
     }
 
-    /* The other recording bleeds through for a blink now and then */
-    (function schedSlip() {
+    /* Left alone, the tape wanders between the two recordings */
+    (function schedDrift() {
       if (!feedB) return;
       setTimeout(function () {
-        if (revealed && feedVisible && !RM && !document.hidden) {
-          glitchPulse(null);
-          feedEl.classList.add('peek');
-          setTimeout(function () { feedEl.classList.remove('peek'); }, 110);
-          setTimeout(function () { feedEl.classList.add('peek'); }, 190);
-          setTimeout(function () { feedEl.classList.remove('peek'); }, 320);
-        }
-        schedSlip();
-      }, 8000 + Math.random() * 9000);
+        if (revealed && feedVisible && !RM && !document.hidden) drift(false);
+        schedDrift();
+      }, 16000 + Math.random() * 10000);
     })();
 
     function acquire() {
@@ -3212,9 +3236,9 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
       setTag();
     }
 
-    feedEl.addEventListener('click', retune);
+    feedEl.addEventListener('click', function () { drift(true); });
     feedEl.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); retune(); }
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); drift(true); }
     });
 
     try {
