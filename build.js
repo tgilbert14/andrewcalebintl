@@ -16,11 +16,11 @@ let html = ['01-style-a.html', '02-style-b.html', '03-body.html', '05-app.html']
 const mapData = fs.readFileSync(src('04-mapdata.js'), 'utf8');
 html = html.replace('/*__MAPDATA__*/', mapData);
 
-// Operator portrait: inlined when src/operator.b64 exists (jpeg base64), else
+// Operator portrait: inlined when src/operator.b64 exists (webp base64), else
 // the feed keeps its classified silhouette and the reveal code stays dormant.
 const opPath = src('operator.b64');
 html = html.replace('<!--OPERATOR-->', fs.existsSync(opPath)
-  ? '<img class="portrait" alt="Andrew Caleb, the operator" src="data:image/jpeg;base64,'
+  ? '<img class="portrait" alt="Andrew Caleb, the operator" src="data:image/webp;base64,'
     + fs.readFileSync(opPath, 'utf8').trim() + '">'
   : '');
 
