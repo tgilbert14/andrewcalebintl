@@ -8,7 +8,7 @@ One self-contained page, zero external requests: fonts, world map, music, and FX
 
 - CRT boot screen, scanlines, VHS tracking rolls, channel-change static
 - Operations Fleet Tracker: real world map (Natural Earth data) with live planes, boats, a satellite, hub tooltips, and a transmission log
-- Original synthwave radio loop synthesized in WebAudio (toggle in the corner HUD)
+- ACI Skywave 99.9 FM: four original synthwave tracks synthesized in WebAudio (own tempo, key, drums, and lead per track), rotating under a station-ident sting (toggle in the corner HUD)
 - A certain car that drives by now and then
 - Cheat code: the footer tells you
 

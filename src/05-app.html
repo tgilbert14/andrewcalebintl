@@ -297,39 +297,115 @@
     return 440 * Math.pow(2, ((NOTE_IDX[m[1]] + (parseInt(m[2], 10) + 1) * 12) - 69) / 12);
   }
 
-  var BPM = 102, SPB = 60 / BPM / 4; /* seconds per 16th */
-  var CHORDS = [
-    { name: 'Am7', pad: ['A2', 'G3', 'C4', 'E4'], root: 'A1' },
-    { name: 'Am7', pad: ['A2', 'G3', 'C4', 'E4'], root: 'A1' },
-    { name: 'Fmaj7', pad: ['F2', 'A3', 'C4', 'E4'], root: 'F1' },
-    { name: 'Fmaj7', pad: ['F2', 'A3', 'C4', 'E4'], root: 'F1' },
-    { name: 'Cmaj7', pad: ['C3', 'G3', 'B3', 'E4'], root: 'C2' },
-    { name: 'Cmaj7', pad: ['C3', 'G3', 'B3', 'E4'], root: 'C2' },
-    { name: 'Gadd9', pad: ['G2', 'B3', 'D4', 'A4'], root: 'G1' },
-    { name: 'Gadd9', pad: ['G2', 'B3', 'D4', 'A4'], root: 'G1' }
-  ];
-  var KICK = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0];
-  var SNARE = [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0];
-  var HAT = [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 2, 0];
+  /* Four ACTUAL tracks, not four titles over one loop. Each is 8 bars of
+     data the same playStep engine reads: tempo, progression, pad voicings,
+     arp figures, drum patterns, pad brightness, and a bars-7/8 lead phrase.
+     Rotation happens at a loop boundary under a station-ident sting. */
   var BASS = [0, 2, 4, 6, 8, 10, 12, 14]; /* steps; even index = root, odd = octave up */
-  var ARP = {
-    'Am7': ['A4', 'C5', 'E5', 'G5', 'A5', 'G5', 'E5', 'C5'],
-    'Fmaj7': ['F4', 'A4', 'C5', 'E5', 'F5', 'E5', 'C5', 'A4'],
-    'Cmaj7': ['C4', 'E4', 'G4', 'B4', 'C5', 'B4', 'G4', 'E4'],
-    'Gadd9': ['G4', 'A4', 'B4', 'D5', 'G5', 'D5', 'B4', 'A4']
-  };
-  var MELODY = [ /* original sparkle riff, bars 7-8 (0-indexed 6-7) */
-    { bar: 6, step: 0, note: 'B4', len: 3 }, { bar: 6, step: 4, note: 'D5', len: 2 },
-    { bar: 6, step: 8, note: 'G5', len: 3 }, { bar: 6, step: 12, note: 'A5', len: 2 }, { bar: 6, step: 14, note: 'G5', len: 2 },
-    { bar: 7, step: 0, note: 'E5', len: 4 }, { bar: 7, step: 6, note: 'D5', len: 2 }, { bar: 7, step: 8, note: 'C5', len: 2 },
-    { bar: 7, step: 10, note: 'B4', len: 2 }, { bar: 7, step: 12, note: 'A4', len: 4 }
+  var TRACK_DEFS = [
+    { title: '"Chrome Horizon" · Vela Nova', bpm: 102, padCut: 1100,
+      prog: ['Am7', 'Am7', 'Fmaj7', 'Fmaj7', 'Cmaj7', 'Cmaj7', 'Gadd9', 'Gadd9'],
+      chords: {
+        'Am7': { pad: ['A2', 'G3', 'C4', 'E4'], root: 'A1' },
+        'Fmaj7': { pad: ['F2', 'A3', 'C4', 'E4'], root: 'F1' },
+        'Cmaj7': { pad: ['C3', 'G3', 'B3', 'E4'], root: 'C2' },
+        'Gadd9': { pad: ['G2', 'B3', 'D4', 'A4'], root: 'G1' }
+      },
+      arps: {
+        'Am7': ['A4', 'C5', 'E5', 'G5', 'A5', 'G5', 'E5', 'C5'],
+        'Fmaj7': ['F4', 'A4', 'C5', 'E5', 'F5', 'E5', 'C5', 'A4'],
+        'Cmaj7': ['C4', 'E4', 'G4', 'B4', 'C5', 'B4', 'G4', 'E4'],
+        'Gadd9': ['G4', 'A4', 'B4', 'D5', 'G5', 'D5', 'B4', 'A4']
+      },
+      kick: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+      snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+      hat: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 2, 0],
+      melody: [ /* the original sparkle riff */
+        { bar: 6, step: 0, note: 'B4', len: 3 }, { bar: 6, step: 4, note: 'D5', len: 2 },
+        { bar: 6, step: 8, note: 'G5', len: 3 }, { bar: 6, step: 12, note: 'A5', len: 2 }, { bar: 6, step: 14, note: 'G5', len: 2 },
+        { bar: 7, step: 0, note: 'E5', len: 4 }, { bar: 7, step: 6, note: 'D5', len: 2 }, { bar: 7, step: 8, note: 'C5', len: 2 },
+        { bar: 7, step: 10, note: 'B4', len: 2 }, { bar: 7, step: 12, note: 'A4', len: 4 }
+      ] },
+    { title: '"Customs After Dark" · The Passport Club', bpm: 90, padCut: 800,
+      prog: ['Dm7', 'Dm7', 'A#maj7', 'A#maj7', 'Gm7', 'Gm7', 'A7', 'A7'],
+      chords: {
+        'Dm7': { pad: ['D3', 'C4', 'F4', 'A4'], root: 'D2' },
+        'A#maj7': { pad: ['A#2', 'A3', 'D4', 'F4'], root: 'A#1' },
+        'Gm7': { pad: ['G2', 'F3', 'A#3', 'D4'], root: 'G1' },
+        'A7': { pad: ['A2', 'G3', 'C#4', 'E4'], root: 'A1' }
+      },
+      arps: {
+        'Dm7': ['D4', 'F4', 'A4', 'C5', 'D5', 'C5', 'A4', 'F4'],
+        'A#maj7': ['A#3', 'D4', 'F4', 'A4', 'A#4', 'A4', 'F4', 'D4'],
+        'Gm7': ['G3', 'A#3', 'D4', 'F4', 'G4', 'F4', 'D4', 'A#3'],
+        'A7': ['A3', 'C#4', 'E4', 'G4', 'A4', 'G4', 'E4', 'C#4']
+      },
+      kick: [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0],
+      snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+      hat: [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 2, 0],
+      melody: [
+        { bar: 6, step: 0, note: 'A4', len: 4 }, { bar: 6, step: 8, note: 'F4', len: 3 },
+        { bar: 6, step: 12, note: 'G4', len: 3 },
+        { bar: 7, step: 0, note: 'E4', len: 5 }, { bar: 7, step: 8, note: 'C#5', len: 2 },
+        { bar: 7, step: 10, note: 'E5', len: 2 }, { bar: 7, step: 12, note: 'A4', len: 4 }
+      ] },
+    { title: '"Tradewind Runner" · Lena Meridian', bpm: 112, padCut: 1400,
+      prog: ['Cmaj7', 'Cmaj7', 'Em7', 'Em7', 'Fmaj7', 'Fmaj7', 'G6', 'G6'],
+      chords: {
+        'Cmaj7': { pad: ['C3', 'G3', 'B3', 'E4'], root: 'C2' },
+        'Em7': { pad: ['E3', 'B3', 'D4', 'G4'], root: 'E2' },
+        'Fmaj7': { pad: ['F2', 'A3', 'C4', 'E4'], root: 'F1' },
+        'G6': { pad: ['G2', 'B3', 'D4', 'E4'], root: 'G1' }
+      },
+      arps: {
+        'Cmaj7': ['E4', 'G4', 'B4', 'C5', 'E5', 'C5', 'B4', 'G4'],
+        'Em7': ['E4', 'G4', 'B4', 'D5', 'E5', 'D5', 'B4', 'G4'],
+        'Fmaj7': ['F4', 'A4', 'C5', 'E5', 'A5', 'E5', 'C5', 'A4'],
+        'G6': ['G4', 'B4', 'D5', 'E5', 'G5', 'E5', 'D5', 'B4']
+      },
+      kick: [1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0],
+      snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+      hat: [1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 2, 1],
+      melody: [
+        { bar: 6, step: 0, note: 'G5', len: 3 }, { bar: 6, step: 4, note: 'E5', len: 2 },
+        { bar: 6, step: 6, note: 'D5', len: 2 }, { bar: 6, step: 8, note: 'C5', len: 4 },
+        { bar: 6, step: 14, note: 'D5', len: 2 },
+        { bar: 7, step: 0, note: 'A5', len: 4 }, { bar: 7, step: 6, note: 'G5', len: 2 },
+        { bar: 7, step: 8, note: 'E5', len: 3 }, { bar: 7, step: 12, note: 'B4', len: 4 }
+      ] },
+    { title: '"Open Water Drive" · Konvoy 86', bpm: 106, padCut: 1000,
+      prog: ['Fmaj7', 'Fmaj7', 'Gadd9', 'Gadd9', 'Am7', 'Am7', 'Am7', 'Am7'],
+      chords: {
+        'Fmaj7': { pad: ['F2', 'A3', 'C4', 'E4'], root: 'F1' },
+        'Gadd9': { pad: ['G2', 'B3', 'D4', 'A4'], root: 'G1' },
+        'Am7': { pad: ['A2', 'G3', 'C4', 'E4'], root: 'A1' }
+      },
+      arps: {
+        'Fmaj7': ['F4', 'A4', 'C5', 'F5', 'E5', 'C5', 'A4', 'C5'],
+        'Gadd9': ['G4', 'B4', 'D5', 'G5', 'A5', 'D5', 'B4', 'D5'],
+        'Am7': ['A4', 'C5', 'E5', 'A5', 'G5', 'E5', 'C5', 'E5']
+      },
+      kick: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+      snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+      hat: [0, 0, 2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0, 2, 0],
+      melody: [
+        { bar: 6, step: 0, note: 'C5', len: 3 }, { bar: 6, step: 4, note: 'B4', len: 2 },
+        { bar: 6, step: 8, note: 'A4', len: 3 }, { bar: 6, step: 12, note: 'E5', len: 4 },
+        { bar: 7, step: 0, note: 'D5', len: 4 }, { bar: 7, step: 6, note: 'C5', len: 2 },
+        { bar: 7, step: 8, note: 'B4', len: 2 }, { bar: 7, step: 10, note: 'A4', len: 2 },
+        { bar: 7, step: 12, note: 'G4', len: 4 }
+      ] }
   ];
-  var TRACKS = [
-    '"Chrome Horizon" · Vela Nova',
-    '"Customs After Dark" · The Passport Club',
-    '"Tradewind Runner" · Lena Meridian',
-    '"Open Water Drive" · Konvoy 86'
-  ];
+  var curTrack = TRACK_DEFS[0];
+  var SPB = 60 / curTrack.bpm / 4; /* seconds per 16th */
+  var pendingTrack = -1;
+  var delayNode = null; /* tempo-synced delay; retuned on track change */
+  function setTrack(i) {
+    trackIdx = i;
+    curTrack = TRACK_DEFS[i];
+    SPB = 60 / curTrack.bpm / 4;
+    if (delayNode) delayNode.delayTime.value = SPB * 3;
+  }
 
   function buildAudio() {
     var AC = window.AudioContext || window.webkitAudioContext;
@@ -346,12 +422,12 @@
 
     /* tempo-synced dotted-8th feedback delay for arp + lead */
     delaySend = audioCtx.createGain(); delaySend.gain.value = 1;
-    var dly = audioCtx.createDelay(1); dly.delayTime.value = SPB * 3;
+    delayNode = audioCtx.createDelay(1); delayNode.delayTime.value = SPB * 3;
     var fbHp = audioCtx.createBiquadFilter(); fbHp.type = 'highpass'; fbHp.frequency.value = 500;
     var fb = audioCtx.createGain(); fb.gain.value = 0.35;
-    delaySend.connect(dly); dly.connect(fbHp); fbHp.connect(fb); fb.connect(dly);
+    delaySend.connect(delayNode); delayNode.connect(fbHp); fbHp.connect(fb); fb.connect(delayNode);
     var wet = audioCtx.createGain(); wet.gain.value = 0.3;
-    dly.connect(wet); wet.connect(musicBus);
+    delayNode.connect(wet); wet.connect(musicBus);
 
     /* shared noise buffer (drums, sfx) */
     var nlen = audioCtx.sampleRate;
@@ -423,7 +499,7 @@
     o1.stop(t + len + 0.1); o2.stop(t + len + 0.1);
   }
   function vPad(t, notes, len) {
-    var lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1100; lp.Q.value = 0.6;
+    var lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = curTrack.padCut; lp.Q.value = 0.6;
     var g = audioCtx.createGain();
     g.gain.setValueAtTime(0.0001, t);
     g.gain.linearRampToValueAtTime(0.28, t + 0.8);
@@ -481,10 +557,11 @@
   }
 
   function playStep(sIB, bar, t) {
-    if (KICK[sIB]) vKick(t);
-    if (SNARE[sIB]) vSnare(t);
-    if (HAT[sIB]) vHat(t, HAT[sIB] === 2);
-    var chord = CHORDS[bar];
+    var T = curTrack;
+    if (T.kick[sIB]) vKick(t);
+    if (T.snare[sIB]) vSnare(t);
+    if (T.hat[sIB]) vHat(t, T.hat[sIB] === 2);
+    var chord = T.chords[T.prog[bar]];
     var bi = BASS.indexOf(sIB);
     if (bi !== -1) {
       var f = freq(chord.root) * (bi % 2 ? 2 : 1);
@@ -492,11 +569,31 @@
     }
     if (bar === 7 && sIB === 15) vBass(t, freq(chord.root) * Math.pow(2, 5 / 12), SPB * 0.9);
     if (bar % 2 === 0 && sIB === 0) vPad(t, chord.pad, SPB * 32);
-    vArp(t, freq(ARP[chord.name][sIB % 8]));
-    for (var i = 0; i < MELODY.length; i++) {
-      var m = MELODY[i];
+    vArp(t, freq(T.arps[T.prog[bar]][sIB % 8]));
+    for (var i = 0; i < T.melody.length; i++) {
+      var m = T.melody[i];
       if (m.bar === bar && m.step === sIB) vLead(t, freq(m.note), m.len * SPB);
     }
+  }
+
+  /* Station ident: a rising filtered whoosh + root-fifth-octave motif in the
+     NEW track's key, played over the first bar so the handoff reads as the
+     station changing records, not the loop glitching. */
+  function stationIdent(t) {
+    var src = audioCtx.createBufferSource(); src.buffer = noiseBuf;
+    var bp = audioCtx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.2;
+    bp.frequency.setValueAtTime(400, t);
+    bp.frequency.exponentialRampToValueAtTime(3600, t + 0.45);
+    var g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.12, t + 0.08);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+    src.connect(bp); bp.connect(g); g.connect(musicBus);
+    src.start(t); src.stop(t + 0.6);
+    var f0 = freq(curTrack.chords[curTrack.prog[0]].root) * 4;
+    [f0, f0 * 1.5, f0 * 2].forEach(function (f, i) {
+      vArp(t + 0.12 + i * SPB, f);
+    });
   }
 
   function schedule() {
@@ -506,23 +603,41 @@
        main-thread stalls shorter than the old 0.2s snap threshold. */
     if (radioNextT < now) radioNextT = now + 0.03;
     while (radioNextT < now + 0.12) {
+      /* Track rotation lands on the loop boundary so the record always
+         changes cleanly at the top, under the ident sting. */
+      if (radioStep === 0 && pendingTrack >= 0) {
+        setTrack(pendingTrack);
+        pendingTrack = -1;
+        stationIdent(radioNextT);
+        npUpdate();
+      }
       playStep(radioStep % 16, Math.floor(radioStep / 16), radioNextT);
       radioNextT += SPB;
       radioStep = (radioStep + 1) % 128;
     }
   }
   function npUpdate() {
-    if (npText) npText.textContent = 'NOW PLAYING: ' + TRACKS[trackIdx] + ' · ACI SKYWAVE 99.9';
+    if (npText) npText.textContent = 'NOW PLAYING: ' + TRACK_DEFS[trackIdx].title + ' · ACI SKYWAVE 99.9';
   }
   function radioOn() {
     if (radioTimer) return;
     radioStep = 0;
+    setTrack(trackIdx);
     radioNextT = audioCtx.currentTime + 0.06;
     musicBus.gain.setTargetAtTime(0.5, audioCtx.currentTime, 0.12);
     radioTimer = setInterval(schedule, 25);
     npUpdate();
-    trackTimer = setInterval(function () { trackIdx = (trackIdx + 1) % TRACKS.length; npUpdate(); }, 75000);
+    trackTimer = setInterval(function () {
+      pendingTrack = (trackIdx + 1) % TRACK_DEFS.length;
+    }, 75000);
   }
+  /* Debug/tuning hook: skip to the next record immediately */
+  window.__aciSkipTrack = function () {
+    if (!radioTimer) return 'radio off';
+    pendingTrack = (trackIdx + 1) % TRACK_DEFS.length;
+    radioStep = 0;
+    return TRACK_DEFS[pendingTrack].title;
+  };
   function radioOff() {
     clearInterval(radioTimer); radioTimer = null;
     clearInterval(trackTimer); trackTimer = null;
