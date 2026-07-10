@@ -16,13 +16,20 @@ let html = ['01-style-a.html', '02-style-b.html', '03-body.html', '05-app.html']
 const mapData = fs.readFileSync(src('04-mapdata.js'), 'utf8');
 html = html.replace('/*__MAPDATA__*/', mapData);
 
-// Operator portrait: inlined when src/operator.b64 exists (webp base64), else
-// the feed keeps its classified silhouette and the reveal code stays dormant.
-const opPath = src('operator.b64');
-html = html.replace('<!--OPERATOR-->', fs.existsSync(opPath)
-  ? '<img class="portrait" alt="Andrew Caleb, the operator" src="data:image/webp;base64,'
-    + fs.readFileSync(opPath, 'utf8').trim() + '">'
-  : '');
+// Operator feeds: profile.b64 is the broadcast portrait (feed A, shades on),
+// profile_alt.b64 is the frame that bleeds through on tracking slips and on
+// tap-to-tune (feed B, shades off). Both webp base64. Without profile.b64 the
+// classified silhouette ships and the reveal code stays dormant.
+const FEEDS = [
+  ['profile.b64', 'portrait feed-a', 'Andrew Caleb, the operator'],
+  ['profile_alt.b64', 'portrait feed-b', 'Andrew Caleb, feed B'],
+];
+html = html.replace('<!--OPERATOR-->', FEEDS
+  .filter(([f]) => fs.existsSync(src(f)))
+  .map(([f, cls, alt]) =>
+    '<img class="' + cls + '" alt="' + alt + '" src="data:image/webp;base64,'
+    + fs.readFileSync(src(f), 'utf8').trim() + '">')
+  .join(''));
 
 // Fonts
 for (const [ph, file] of [

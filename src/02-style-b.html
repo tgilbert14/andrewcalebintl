@@ -368,9 +368,10 @@ html.rm .monitor.nosignal .staticbg { animation: none; }
   opacity: .07; pointer-events: none;
 }
 .feed .silhouette { width: 62%; height: auto; color: #120A26; filter: drop-shadow(0 0 30px rgba(43,240,230,.15)); }
-/* Operator portrait (inlined at build time when src/operator.b64 exists).
+/* Operator feeds (inlined at build time from src/profile.b64 + profile_alt.b64).
    Hidden until the signal-acquisition reveal fires; scanlines + noise stay on
-   top so the photo reads as a surveillance feed, not a headshot. */
+   top so the photos read as a surveillance feed, not headshots. Feed B paints
+   above feed A (later sibling, same z-index), so showing B covers A. */
 .feed .portrait {
   position: absolute; inset: 0; z-index: 1;
   width: 100%; height: 100%; object-fit: cover;
@@ -378,8 +379,15 @@ html.rm .monitor.nosignal .staticbg { animation: none; }
   filter: saturate(1.15) contrast(1.05);
 }
 .feed.live .silhouette { visibility: hidden; }
-.feed.live .portrait { opacity: 1; }
-.feed.revealing .portrait { animation: pflicker .95s steps(7, end) both; }
+.feed.live .portrait.feed-a { opacity: 1; }
+/* B shows when tuned (.altfeed) OR during a momentary tracking slip (.peek);
+   peek is an XOR so a slip always cuts to whichever feed is NOT showing. */
+.feed.live.altfeed .portrait.feed-b,
+.feed.live.peek .portrait.feed-b { opacity: 1; }
+.feed.live.altfeed.peek .portrait.feed-b { opacity: 0; }
+.feed.live.tunable { cursor: pointer; }
+.feed:focus-visible { outline: 2px solid var(--signal-cyan); outline-offset: 3px; }
+.feed.revealing .portrait.feed-a { animation: pflicker .95s steps(7, end) both; }
 .feed.revealing::after { animation: pnoise .95s steps(7, end) both; }
 @keyframes pflicker {
   0% { opacity: 0; } 18% { opacity: .45; } 34% { opacity: .12; }
@@ -388,7 +396,26 @@ html.rm .monitor.nosignal .staticbg { animation: none; }
 @keyframes pnoise {
   0% { opacity: .85; } 55% { opacity: .35; } 100% { opacity: .07; }
 }
-html.rm .feed.revealing .portrait, html.rm .feed.revealing::after { animation: none; }
+html.rm .feed.revealing .portrait.feed-a, html.rm .feed.revealing::after { animation: none; }
+/* Glitch dressing while a slip or retune is in flight: a tracking band rolls
+   down the frame, the noise floor jumps, colors push hot for a beat. */
+.feed .vband {
+  position: absolute; left: 0; right: 0; top: -22%; height: 44px;
+  z-index: 2; pointer-events: none; opacity: 0;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(233,237,245,.13) 42%,
+    rgba(43,240,230,.09) 60%,
+    transparent 100%);
+  mix-blend-mode: screen;
+}
+.feed.glitching .vband { opacity: 1; animation: feedband .45s linear 1; }
+@keyframes feedband { from { top: -22%; } to { top: 104%; } }
+.feed.glitching::after { opacity: .4; }
+.feed.glitching .portrait { filter: saturate(1.4) contrast(1.2) hue-rotate(8deg); }
+html.rm .feed .vband { display: none; }
+html.rm .feed.glitching::after { opacity: .07; }
+html.rm .feed.glitching .portrait { filter: saturate(1.15) contrast(1.05); }
 .feed .osd-top { position: absolute; top: 10px; left: 14px; font-size: 17px; z-index: 3; }
 .feed .osd-bottom { position: absolute; bottom: 10px; right: 14px; font-size: 16px; color: rgba(233,237,245,.7); z-index: 3; }
 .feed .osd-classified {
@@ -801,7 +828,8 @@ html.rm #carLane.rm-show { display: block; }
   .monitor:hover::after { opacity: 0; }
   .badge-live { animation: none; }
   .monitor.nosignal .staticbg { animation: none; }
-  .feed.revealing .portrait, .feed.revealing::after { animation: none; }
+  .feed.revealing .portrait.feed-a, .feed.revealing::after { animation: none; }
+  .feed .vband { display: none; }
   .btn-rec .dot { animation: none; }
   .footer .rewind.blink { animation: none; }
   .m-sweep { display: none; }

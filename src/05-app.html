@@ -618,7 +618,7 @@
     else if (t === 'keydown') {
       /* Space while the boot curtain is up (skip) or while activating a
          button/link is not scroll intent. */
-      if (boot || (e.target && e.target.closest && e.target.closest('button, a, input, textarea, select'))) return;
+      if (boot || (e.target && e.target.closest && e.target.closest('button, a, input, textarea, select, [role="button"], [tabindex]'))) return;
       if (SCROLL_KEYS[e.key]) scrolledDown = true;
     }
     else if (t === 'touchmove') {
@@ -1281,36 +1281,106 @@
   }
 
   /* ============================================================
-     CH 05 — SIGNAL ACQUISITION
-     If the build inlined a portrait (src/operator.b64), the classified feed
-     comes live the first time the operator section scrolls into view.
-     Without the image this whole block stays dormant.
+     CH 05 — SIGNAL ACQUISITION + TAPE TRACKING
+     If the build inlined portraits (src/profile.b64 [+ profile_alt.b64]),
+     the classified feed comes live on first scroll-in. With both feeds:
+     tap/Enter retunes between feed A (shades) and feed B (off the record),
+     and every so often the tracking slips and the OTHER frame bleeds
+     through for a blink. Without images this block stays dormant.
      ============================================================ */
   (function () {
     var feedEl = $('#opFeed');
-    var portrait = feedEl ? feedEl.querySelector('.portrait') : null;
-    if (!feedEl || !portrait) return;
+    var feedA = feedEl ? feedEl.querySelector('.portrait.feed-a') : null;
+    var feedB = feedEl ? feedEl.querySelector('.portrait.feed-b') : null;
+    if (!feedEl || !feedA) return;
     var feedTag = $('#feedTag'), feedOsd = $('#feedOsd');
+    var revealed = false, feedVisible = false, tuned = false, everTuned = false;
+    var glitchT = null;
+
+    function setTag() {
+      if (feedTag) {
+        feedTag.textContent = tuned ? 'Feed B — Off the Record'
+          : (everTuned || !feedB ? 'Signal Acquired' : 'Signal Acquired — Tap to Tune');
+      }
+      feedEl.setAttribute('aria-pressed', tuned ? 'true' : 'false');
+    }
+
+    /* ~460ms of tracking-band + noise dressing; cb runs at the cut point */
+    function glitchPulse(cb) {
+      feedEl.classList.remove('glitching');
+      void feedEl.offsetWidth; /* restart the band animation */
+      feedEl.classList.add('glitching');
+      clearTimeout(glitchT);
+      if (cb) setTimeout(cb, 140);
+      glitchT = setTimeout(function () { feedEl.classList.remove('glitching'); }, 460);
+    }
+
+    function retune() {
+      if (!revealed || !feedB) return;
+      everTuned = true;
+      if (RM) {
+        tuned = !tuned;
+        feedEl.classList.toggle('altfeed', tuned);
+        setTag();
+        return;
+      }
+      if (AE.blip) AE.blip();
+      glitchPulse(function () {
+        tuned = !tuned;
+        feedEl.classList.toggle('altfeed', tuned);
+        setTag();
+      });
+    }
+
+    /* The other recording bleeds through for a blink now and then */
+    (function schedSlip() {
+      if (!feedB) return;
+      setTimeout(function () {
+        if (revealed && feedVisible && !RM && !document.hidden) {
+          glitchPulse(null);
+          feedEl.classList.add('peek');
+          setTimeout(function () { feedEl.classList.remove('peek'); }, 110);
+          setTimeout(function () { feedEl.classList.add('peek'); }, 190);
+          setTimeout(function () { feedEl.classList.remove('peek'); }, 320);
+        }
+        schedSlip();
+      }, 8000 + Math.random() * 9000);
+    })();
+
     function acquire() {
+      if (revealed) return;
+      revealed = true;
       feedEl.classList.add('live');
       if (!RM) {
         feedEl.classList.add('revealing');
         setTimeout(function () { feedEl.classList.remove('revealing'); }, 1000);
       }
       if (feedOsd) feedOsd.innerHTML = '&#9654; Play';
-      if (feedTag) feedTag.textContent = 'Signal Acquired';
       if (AE.blip) AE.blip();
+      if (feedB) {
+        feedEl.classList.add('tunable');
+        feedEl.setAttribute('tabindex', '0');
+        feedEl.setAttribute('role', 'button');
+        feedEl.setAttribute('aria-label', 'Operator feed: switch between feed A and feed B');
+      }
+      setTag();
     }
+
+    feedEl.addEventListener('click', retune);
+    feedEl.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); retune(); }
+    });
+
     try {
+      /* Keeps observing after the reveal: visibility gates the slips */
       var oio = new IntersectionObserver(function (es) {
         es.forEach(function (en) {
-          if (!en.isIntersecting) return;
-          oio.disconnect();
-          setTimeout(acquire, 350);
+          feedVisible = en.isIntersecting;
+          if (en.isIntersecting) setTimeout(acquire, 350);
         });
       }, { threshold: 0.35 });
       oio.observe(feedEl);
-    } catch (e) { acquire(); }
+    } catch (e) { acquire(); feedVisible = true; }
   })();
 
   /* ============================================================

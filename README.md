@@ -22,7 +22,7 @@ node build.js
 
 Outputs `index.html` (the site, served by GitHub Pages from the repo root) and `fragment.html` (headless copy for artifact embeds, gitignored).
 
-Optional: drop a base64-encoded JPEG at `src/operator.b64` and the build inlines it as the Operator portrait — the CH 05 feed then plays a one-time "signal acquisition" reveal when scrolled into view. Without the file, the classified silhouette ships and the reveal code stays dormant.
+Optional: drop base64-encoded webp portraits at `src/profile.b64` (feed A) and `src/profile_alt.b64` (feed B) and the build inlines them into the CH 05 feed. First scroll-in plays the "signal acquisition" reveal; with both feeds present, tap/Enter retunes between A and B, and the tape's tracking occasionally slips to the other frame for a blink. Without the files, the classified silhouette ships and all of it stays dormant.
 
 `og.png` is the social-share card (referenced by `og:image`; fetched by link scrapers only, never by the page itself — the zero-external-request rule holds at runtime).
 
