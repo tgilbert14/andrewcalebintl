@@ -1,0 +1,230 @@
+<a class="skip-link" href="#main">Skip to content</a>
+<script>document.documentElement.classList.add('js');</script>
+
+<!-- WORLD (canvas) + pre-JS sunset fallback -->
+<div class="stage-fallback" id="stageFallback" aria-hidden="true"></div>
+<canvas id="world" aria-hidden="true"></canvas>
+
+<!-- FIXED FX LAYERS (decorative) -->
+<div class="fx-scanlines" aria-hidden="true"></div>
+<div class="fx-vignette" aria-hidden="true"></div>
+<div class="fx-flicker" aria-hidden="true"></div>
+<canvas class="fx-drift" id="driftfx" width="160" height="90" aria-hidden="true"></canvas>
+<div class="fx-osdflash" id="osdflash" aria-hidden="true">Turbo</div>
+
+<!-- HUD (decorative tape chrome; live controls live on the dash) -->
+<div class="hud" aria-hidden="true">
+  <div class="tl osd"><span class="playglyph"></span>PLAY&nbsp;&nbsp;<span id="hudTrk">TRK 01</span> &middot; SIDE B</div>
+  <div class="tr osd">SP &middot; <span id="hudCounter">0:00:00</span></div>
+</div>
+
+<!-- ROUTE RAIL: the tracklist -->
+<nav class="rail" aria-label="Tracklist">
+  <a href="#trk01" data-i="0" style="--acc:#ffcc00" class="active" aria-current="true"><span class="lbl">TRK 01 &middot; Ignition</span></a>
+  <a href="#trk02" data-i="1" style="--acc:#00f2ff"><span class="lbl">TRK 02 &middot; The City</span></a>
+  <a href="#trk03" data-i="2" style="--acc:#ff6a00"><span class="lbl">TRK 03 &middot; The Expressway</span></a>
+  <a href="#trk04" data-i="3" style="--acc:#b026ff"><span class="lbl">TRK 04 &middot; The Coast</span></a>
+  <a href="#trk05" data-i="4" style="--acc:#ff00ff"><span class="lbl">TRK 05 &middot; The Grid</span></a>
+  <a href="#trk06" data-i="5" style="--acc:#ffd91f"><span class="lbl">TRK 06 &middot; Into the Sun</span></a>
+</nav>
+
+<!-- THE CAR: side view rides TRK 01–05, rear view owns the finale -->
+<div id="carLane" aria-hidden="true">
+  <div id="car">
+    <svg viewBox="-180 0 700 120" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="gRefl" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#ff00ff"/>
+          <stop offset="100%" stop-color="#00f2ff"/>
+        </linearGradient>
+        <linearGradient id="gCone" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#ffcc00" stop-opacity=".3"/>
+          <stop offset="100%" stop-color="#ffcc00" stop-opacity="0"/>
+        </linearGradient>
+        <linearGradient id="gStreak" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#ff00ff" stop-opacity="0"/>
+          <stop offset="100%" stop-color="#ff00ff" stop-opacity=".4"/>
+        </linearGradient>
+        <radialGradient id="gUg" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#00f2ff" stop-opacity=".55"/>
+          <stop offset="100%" stop-color="#00f2ff" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <ellipse class="car-underglow" cx="186" cy="100" rx="172" ry="9" fill="url(#gUg)"/>
+      <polygon class="cone" points="348,52 520,36 520,84 350,66" fill="url(#gCone)"/>
+      <polygon points="-175,71 13,66 13,82 -175,77" fill="url(#gStreak)"/>
+      <line class="sl" x1="-24" y1="42" x2="-150" y2="42" stroke="#ffffff" stroke-width="2"/>
+      <line class="sl" x1="-10" y1="62" x2="-170" y2="62" stroke="#ffffff" stroke-width="2"/>
+      <line class="sl" x1="-30" y1="86" x2="-140" y2="86" stroke="#ffffff" stroke-width="2"/>
+      <path d="M12 50 L52 46 L52 51 L16 55 Z" fill="#f4f4ff"/>
+      <line x1="12" y1="55" x2="52" y2="51" stroke="#ff00ff" stroke-width="1.5"/>
+      <rect x="20" y="53" width="4" height="9" fill="#f4f4ff"/>
+      <rect x="40" y="50" width="4" height="10" fill="#f4f4ff"/>
+      <path d="M14 88 L20 60 Q22 55 30 54 L96 47 L128 36 Q133 33 140 33 L216 33 L292 44 L348 64 Q358 68 359 78 L359 88 Q359 93 352 93 L22 93 Q14 93 14 88 Z" fill="#f4f4ff"/>
+      <path d="M104 50 L130 39 L206 39 L206 50 Z" fill="#0b001a" stroke="#00f2ff" stroke-width="1"/>
+      <rect x="18" y="78" width="338" height="6" rx="2" fill="url(#gRefl)" opacity=".7"/>
+      <rect x="324" y="52" width="22" height="9" rx="2" fill="#f4f4ff" stroke="#b8c0d4" stroke-width="1"/>
+      <circle cx="341" cy="56.5" r="3.2" fill="#ffcc00"/>
+      <rect x="10" y="62" width="12" height="20" rx="3" fill="rgba(255,43,43,.35)"/>
+      <rect x="13" y="64" width="7" height="16" rx="2" fill="#ff2b2b"/>
+      <circle cx="84" cy="93" r="17" fill="#05000e" stroke="#2b003d" stroke-width="3.5"/>
+      <circle cx="288" cy="93" r="17" fill="#05000e" stroke="#2b003d" stroke-width="3.5"/>
+      <g transform="translate(84 93)"><g class="spokes" id="wRs">
+        <line x1="0" y1="0" x2="12" y2="0" stroke="#E9EDF5" stroke-width="1.6"/>
+        <line x1="0" y1="0" x2="3.7" y2="11.4" stroke="#E9EDF5" stroke-width="1.6"/>
+        <line x1="0" y1="0" x2="-9.7" y2="7.05" stroke="#E9EDF5" stroke-width="1.6"/>
+        <line x1="0" y1="0" x2="-9.7" y2="-7.05" stroke="#E9EDF5" stroke-width="1.6"/>
+        <line x1="0" y1="0" x2="3.7" y2="-11.4" stroke="#E9EDF5" stroke-width="1.6"/>
+        <circle cx="0" cy="0" r="4" fill="#9fb4d4"/>
+      </g></g>
+      <g transform="translate(288 93)"><g class="spokes" id="wFs">
+        <line x1="0" y1="0" x2="12" y2="0" stroke="#E9EDF5" stroke-width="1.6"/>
+        <line x1="0" y1="0" x2="3.7" y2="11.4" stroke="#E9EDF5" stroke-width="1.6"/>
+        <line x1="0" y1="0" x2="-9.7" y2="7.05" stroke="#E9EDF5" stroke-width="1.6"/>
+        <line x1="0" y1="0" x2="-9.7" y2="-7.05" stroke="#E9EDF5" stroke-width="1.6"/>
+        <line x1="0" y1="0" x2="3.7" y2="-11.4" stroke="#E9EDF5" stroke-width="1.6"/>
+        <circle cx="0" cy="0" r="4" fill="#9fb4d4"/>
+      </g></g>
+    </svg>
+    <div id="carHit"></div>
+  </div>
+
+  <!-- Rear view: the same car, seen from behind on the grid.
+       Stacked bands per the Gandini discipline: bumper, louvred tail bar,
+       tapering deck, narrow raked greenhouse, wide rear tires, one high
+       mirror. Near-black body, pink rim-light, red tail glow. -->
+  <div id="carRear">
+    <svg viewBox="0 0 300 175" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="gUg2" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#00f2ff" stop-opacity=".5"/>
+          <stop offset="100%" stop-color="#00f2ff" stop-opacity="0"/>
+        </radialGradient>
+        <linearGradient id="gTail" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#ff2b2b" stop-opacity=".95"/>
+          <stop offset="18%" stop-color="#ff2b2b" stop-opacity=".55"/>
+          <stop offset="50%" stop-color="#ff2b2b" stop-opacity=".4"/>
+          <stop offset="82%" stop-color="#ff2b2b" stop-opacity=".55"/>
+          <stop offset="100%" stop-color="#ff2b2b" stop-opacity=".95"/>
+        </linearGradient>
+      </defs>
+      <ellipse cx="150" cy="164" rx="132" ry="7" fill="rgba(0,0,0,.55)"/>
+      <ellipse class="car-underglow" cx="150" cy="160" rx="118" ry="7" fill="url(#gUg2)"/>
+      <rect x="6" y="118" width="52" height="44" rx="9" fill="#05000e"/>
+      <rect x="242" y="118" width="52" height="44" rx="9" fill="#05000e"/>
+      <rect x="18" y="126" width="264" height="32" rx="7" fill="#0c0c1e"/>
+      <line x1="24" y1="127" x2="276" y2="127" stroke="#ff2975" stroke-width="1.4" opacity=".8"/>
+      <rect x="22" y="94" width="256" height="36" rx="5" fill="#05000e"/>
+      <g>
+        <line x1="30" y1="102" x2="270" y2="102" stroke="url(#gTail)" stroke-width="6" opacity=".28"/>
+        <line x1="30" y1="102" x2="270" y2="102" stroke="url(#gTail)" stroke-width="2.4"/>
+        <line x1="30" y1="110" x2="270" y2="110" stroke="url(#gTail)" stroke-width="6" opacity=".28"/>
+        <line x1="30" y1="110" x2="270" y2="110" stroke="url(#gTail)" stroke-width="2.4"/>
+        <line x1="30" y1="118" x2="270" y2="118" stroke="url(#gTail)" stroke-width="6" opacity=".28"/>
+        <line x1="30" y1="118" x2="270" y2="118" stroke="url(#gTail)" stroke-width="2.4"/>
+      </g>
+      <rect x="130" y="100" width="40" height="20" rx="2" fill="#1a0b2e" stroke="rgba(255,204,0,.7)" stroke-width="1"/>
+      <text x="150" y="115" text-anchor="middle" font-family="'VT323','Courier New',monospace" font-size="13" fill="#ffcc00" letter-spacing="1">ACI-86</text>
+      <path d="M40 94 L62 74 L238 74 L260 94 Z" fill="#0c0c1e"/>
+      <line x1="62" y1="74" x2="238" y2="74" stroke="#ff2975" stroke-width="1.6" opacity=".9"/>
+      <path d="M94 74 L114 42 L186 42 L206 74 Z" fill="#08001a"/>
+      <path d="M102 70 L119 49 L181 49 L198 70 Z" fill="#120230" stroke="rgba(0,242,255,.55)" stroke-width="1"/>
+      <line x1="114" y1="42" x2="186" y2="42" stroke="#ff2975" stroke-width="1.6"/>
+      <line x1="106" y1="52" x2="90" y2="40" stroke="#0c0c1e" stroke-width="3"/>
+      <ellipse cx="87" cy="38" rx="8" ry="5.5" fill="#0c0c1e"/>
+      <path d="M80 35 Q87 32 94 35" stroke="#ff2975" stroke-width="1.2" fill="none" opacity=".8"/>
+      <circle cx="58" cy="152" r="4" fill="#1c1c2e" stroke="#3a3a52" stroke-width="1.5"/>
+      <circle cx="242" cy="152" r="4" fill="#1c1c2e" stroke="#3a3a52" stroke-width="1.5"/>
+    </svg>
+  </div>
+</div>
+
+<main id="main">
+<div id="track">
+
+<!-- ============ TRK 01 : IGNITION ============ -->
+<section class="scene" id="trk01" data-trk="TRK 01" data-name="IGNITION" style="--acc:#ffcc00">
+  <p class="eyebrow">Skywave 99.9 Presents</p>
+  <h1 class="h1"><span class="chrome-text">NIGHT DRIVE</span></h1>
+  <p class="script">Side B</p>
+  <p class="tagline">Scroll to Drive</p>
+  <p>The office closes at dusk. The coast opens at eight. This is the part of the job that never made the brochure.</p>
+  <p class="cue" aria-hidden="true">&#9660; Shift Into Drive</p>
+</section>
+
+<!-- ============ TRK 02 : THE CITY ============ -->
+<section class="scene" id="trk02" data-trk="TRK 02" data-name="THE CITY" style="--acc:#00f2ff">
+  <span class="trk-tab">TRK 02 &middot; The City</span>
+  <h2>Every Window Is a Meeting.</h2>
+  <p>Downtown still glows with unfinished business. We pass all of it. Tonight's appointment is with the horizon.</p>
+  <div class="tags"><span>Downtown</span><span>42 Floors</span><span>Neon</span></div>
+</section>
+
+<!-- ============ TRK 03 : THE EXPRESSWAY ============ -->
+<section class="scene" id="trk03" data-trk="TRK 03" data-name="THE EXPRESSWAY" style="--acc:#ff6a00">
+  <span class="trk-tab">TRK 03 &middot; The Expressway</span>
+  <h2>Eight Lanes, No Questions.</h2>
+  <p>The expressway doesn't ask where you're headed, and we extend it the same courtesy.</p>
+  <div class="tags"><span>Speed 88</span><span>Sodium Glow</span></div>
+</section>
+
+<!-- ============ TRK 04 : THE COAST ============ -->
+<section class="scene" id="trk04" data-trk="TRK 04" data-name="THE COAST" style="--acc:#b026ff">
+  <span class="trk-tab">TRK 04 &middot; The Coast</span>
+  <h2>The Ocean Keeps Our Hours.</h2>
+  <p>City in the mirror, moon on the water. Somewhere past the break is everyone we haven't met yet.</p>
+  <div class="tags"><span>Coast Hwy</span><span>Moonrise</span><span>Palms</span></div>
+</section>
+
+<!-- ============ TRK 05 : THE GRID ============ -->
+<section class="scene" id="trk05" data-trk="TRK 05" data-name="THE GRID" style="--acc:#ff00ff">
+  <span class="trk-tab">TRK 05 &middot; The Grid</span>
+  <h2>Past the Last Exit.</h2>
+  <p>Out here the map gives up and the signal takes over. Skywave comes in clearer than it has any right to.</p>
+  <div class="tags"><span>No Service</span><span>Full Signal</span></div>
+</section>
+
+<!-- ============ TRK 06 : INTO THE SUN ============ -->
+<section class="scene center" id="trk06" data-trk="TRK 06" data-name="INTO THE SUN" style="--acc:#ffd91f">
+  <span class="trk-tab">TRK 06 &middot; Into the Sun</span>
+  <h2>Drive Until the Sun Takes You.</h2>
+  <p>Every tape runs out. The good ones run out on the chorus.</p>
+  <div class="tags"><span>Due West</span><span>End of Tape</span></div>
+</section>
+
+</div>
+
+<!-- ============ END CARD (after the tape runs out) ============ -->
+<section class="endcard" id="end">
+  <div class="tape-card">
+    <div class="strip"><span>Side B &middot; End of Tape</span><span>Recorded somewhere west of everything</span></div>
+    <div class="inner">
+      <h2>End of Side B</h2>
+      <div class="lines">
+        <p>You made it to the end of the tape. The sun has the car now; the Operator will want it back by morning.</p>
+        <p>Same time tomorrow. The coast isn't going anywhere.</p>
+      </div>
+      <div class="actions">
+        <button class="rewind" id="rewBtn">&#9664;&#9664; Rew &middot; Drive It Again</button>
+        <a class="btn btn-primary" href="../">&#9654; Play Side A</a>
+        <a class="btn btn-ghost" href="mailto:contactandrewcalebintl@gmail.com">&#9167; Eject &middot; Send Transmission</a>
+      </div>
+    </div>
+  </div>
+  <p class="micro">ACI Master Tape 001 &middot; Side B &middot; Stereo Hi-Fi &middot; Be Kind, Rewind</p>
+  <p class="legal">&copy; 2026 Andrew Caleb International. No cars were harmed. The sun gives it back every morning.</p>
+  <noscript><p class="legal">The drive itself needs JavaScript; the tape notes above read fine without it.</p></noscript>
+</section>
+</main>
+
+<!-- DASH (the only live controls: FX + radio) -->
+<div class="dash">
+  <div class="cluster">
+    <span class="osd speed" id="dashSpeed" aria-hidden="true">D &middot; <b>00</b> MPH</span>
+  </div>
+  <div class="cluster">
+    <span class="np" id="npTicker" hidden><span class="np-inner" id="npText"></span></span>
+    <button class="audio-btn" id="fxBtn" aria-pressed="false" aria-label="Toggle visual effects">FX [On]</button>
+    <button class="audio-btn" id="audioBtn" aria-pressed="false" aria-label="Toggle radio: Night Drive FM, Skywave 99.9">FM 99.9 [Tune]</button>
+  </div>
+</div>

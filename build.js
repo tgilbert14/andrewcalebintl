@@ -47,6 +47,57 @@ if (/__[A-Z]+__/.test(html)) {
 
 fs.writeFileSync(path.join(__dirname, 'fragment.html'), html);
 
+/* ---------- SIDE B: /drive/ (Night Drive) ---------- */
+/* Same law as the main tape: concatenate parts, inline fonts, zero external
+   requests. Served by Pages at /drive/. */
+const driveSrc = p => path.join(__dirname, 'src', 'drive', p);
+if (fs.existsSync(driveSrc('01-style.html'))) {
+  let drive = ['01-style.html', '02-body.html', '03-app.html']
+    .map(f => fs.readFileSync(driveSrc(f), 'utf8'))
+    .join('\n');
+  for (const [ph, file] of [
+    ['__AUDIOWIDE__', 'fonts/audiowide.b64'],
+    ['__VT323__', 'fonts/vt323.b64'],
+    ['__YELLOWTAIL__', 'fonts/yellowtail.b64'],
+  ]) {
+    drive = drive.split(ph).join(fs.readFileSync(src(file), 'utf8').trim());
+  }
+  if (/__[A-Z]+__/.test(drive)) {
+    console.error('ERROR: unreplaced placeholder remains in drive page');
+    process.exit(1);
+  }
+  const DDESC = 'Skywave 99.9 presents Night Drive. Side B of the ACI master tape: one coast, one signal, drive until the sun takes you.';
+  const DFAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23120230'/%3E%3Cdefs%3E%3ClinearGradient id='s' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23ffd91f'/%3E%3Cstop offset='.55' stop-color='%23ff6a00'/%3E%3Cstop offset='1' stop-color='%23ff2d78'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='32' cy='34' r='20' fill='url(%23s)'/%3E%3Crect x='8' y='38' width='48' height='3' fill='%23120230'/%3E%3Crect x='8' y='45' width='48' height='4' fill='%23120230'/%3E%3Crect x='8' y='53' width='48' height='5' fill='%23120230'/%3E%3C/svg%3E";
+  const driveBody = drive.replace(/^<title>.*?<\/title>\s*/, '');
+  const driveWrapped = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Night Drive — ACI Side B</title>
+<meta name="description" content="${DDESC}">
+<meta name="theme-color" content="#120230">
+<link rel="icon" href="${DFAVICON}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Night Drive — ACI Side B">
+<meta property="og:description" content="${DDESC}">
+<meta property="og:url" content="https://www.andrewcalebintl.com/drive/">
+<meta property="og:image" content="https://www.andrewcalebintl.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+<body>
+${driveBody}
+</body>
+</html>
+`;
+  const driveDir = path.join(__dirname, 'drive');
+  if (!fs.existsSync(driveDir)) fs.mkdirSync(driveDir);
+  fs.writeFileSync(path.join(driveDir, 'index.html'), driveWrapped);
+  console.log('built drive/index.html (' + (driveWrapped.length / 1024).toFixed(0) + 'KB)');
+}
+
 // index.html gets a real <head>: hoist the fragment's <title> up (it stays in
 // fragment.html so artifact embeds keep their tab name), plus icon/theme/social
 // meta and a no-JS escape hatch for the boot overlay.

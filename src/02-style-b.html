@@ -604,6 +604,15 @@ html.rm .btn-rec .dot { animation: none; }
   transition: background-color .18s ease, box-shadow .18s ease;
 }
 .footer .rewind:hover { background: rgba(255,204,0,.1); box-shadow: 0 0 18px rgba(255,204,0,.3); }
+/* Side B: same control grammar, pink so it reads as the other reel */
+.footer a.flip {
+  display: inline-block; text-decoration: none;
+  color: var(--neon-pink); border-color: rgba(255,0,255,.45);
+  margin-right: 14px;
+}
+.footer a.flip:hover { background: rgba(255,0,255,.1); box-shadow: 0 0 18px rgba(255,0,255,.3); }
+.tapenav a.sideb { color: var(--neon-pink); }
+.tapenav a.sideb:hover { color: #ff5fff; }
 .footer .rewind.blink { animation: osdblink 1.1s steps(1) infinite; }
 html.rm .footer .rewind.blink { animation: none; }
 .footer p { color: rgba(244,246,255,.85); font-size: .92rem; margin-bottom: 6px; }

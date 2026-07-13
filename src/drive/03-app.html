@@ -1,0 +1,1453 @@
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- Environment (house pattern, Side A) ---------- */
+  var store = {
+    get: function (k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} }
+  };
+  var RM = false, rmMq = null;
+  try { rmMq = matchMedia('(prefers-reduced-motion: reduce)'); RM = rmMq.matches; } catch (e) {}
+  var fxPref = store.get('aci_fx'); /* shared with Side A: one tape, one FX law */
+  if (fxPref === '0') RM = true; else if (fxPref === '1') RM = false;
+  if (RM) document.documentElement.classList.add('rm');
+
+  var COARSE = false;
+  try { COARSE = matchMedia('(hover: none) and (pointer: coarse)').matches; } catch (e) {}
+
+  var $ = function (s) { return document.querySelector(s); };
+  var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
+  var clamp = function (v, a, b) { return v < a ? a : (v > b ? b : v); };
+  var smooth = function (x) { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
+  /* Monotone dwell remap: f(0)=0, f(1)=1, camera settles mid-scene where the
+     copy peaks. (1-L)x + L(4(x-.5)^3+.5). */
+  var lingerEase = function (x, L) { var c = x - 0.5; return (1 - L) * x + L * (4 * c * c * c + 0.5); };
+  /* Trapezoid presence envelope over journey time */
+  function env(T, a, b, c, d) {
+    if (T <= a || T >= d) return 0;
+    if (T < b) return smooth((T - a) / (b - a));
+    if (T > c) return smooth(1 - (T - c) / (d - c));
+    return 1;
+  }
+
+  var AE = { on: false };
+
+  /* ============================================================
+     JOURNEY LAYOUT — spacer track, six bands, lerped time
+     ============================================================ */
+  var WEIGHTS = [1.5, 1.2, 1.1, 1.2, 1.2, 2.2];
+  var LINGER  = [0.35, 0, 0, 0, 0, 0.25];
+  var N = 6;
+  var track = $('#track');
+  var scenes = $$('.scene');
+  var bands = [];
+  var vh = innerHeight, laidW = innerWidth, trackH = 1;
+  var targetT = 0, curT = 0;
+
+  function layout() {
+    vh = innerHeight; laidW = innerWidth;
+    var off = 0;
+    bands = WEIGHTS.map(function (w) {
+      var s = off * vh; off += w;
+      return { start: s, end: off * vh };
+    });
+    trackH = off * vh + Math.round(vh * 0.5);
+    track.style.height = trackH + 'px';
+    read();
+  }
+  var vtForce = -1; /* ?vt=N pins journey time without scrolling (capture rig) */
+  function read() {
+    if (vtForce >= 0) { targetT = vtForce; return; }
+    var y = scrollY;
+    var i = 0;
+    for (var k = 0; k < N; k++) { if (y >= bands[k].start) i = k; }
+    var b = bands[i];
+    /* Degenerate bands (zero-size load) must not divide by zero: NaN here
+       poisons curT and every accumulator downstream. */
+    var span = b.end - b.start;
+    var pr = span > 0 ? clamp((y - b.start) / span, 0, 1) : 0;
+    targetT = i + (LINGER[i] ? lingerEase(pr, LINGER[i]) : pr);
+  }
+  var ticking = false;
+  addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(function () { ticking = false; read(); }); }
+  }, { passive: true });
+
+  /* URL-bar rule: on touch, a height-only resize must not rebuild the track
+     (it yanks the scroll position); the canvas backing store still resizes. */
+  addEventListener('resize', function () {
+    if (COARSE && innerWidth === laidW) { resizeCanvas(); return; }
+    layout(); resizeCanvas();
+  });
+  addEventListener('orientationchange', function () { layout(); resizeCanvas(); });
+
+  /* ============================================================
+     THE WORLD — one canvas, everything procedural.
+     Grid + road are perspective-divide canvas math on purpose: the CSS
+     rotateX + background-position variant is the documented GPU landmine.
+     No shadowBlur in the frame loop; glow = pre-rendered sprites +
+     layered strokes.
+     ============================================================ */
+  var canvas = $('#world'), ctx = canvas.getContext('2d');
+  var W = innerWidth, H = innerHeight, DPR = 1;
+  var firstPaint = false;
+  var rearH = 0; /* carRear layout height, cached — never read layout in the frame loop */
+  var spriteW = 0, spriteH = 0, spriteTimer = 0;
+
+  function resizeCanvas() {
+    W = innerWidth; H = innerHeight;
+    DPR = Math.min(devicePixelRatio || 1, COARSE ? 1.5 : 2);
+    /* Backing-store budget: the finale is ~4 full-viewport alpha passes
+       (sky + sun glow + grid wash + whiteout); cap total pixels so a
+       5K/4K-at-2x desktop doesn't pay 14MP x 4 every frame. Slight
+       softness is hidden by the scanline overlay. */
+    DPR = Math.min(DPR, Math.max(1, Math.sqrt(4.5e6 / Math.max(1, W * H))));
+    canvas.width = Math.round(W * DPR);
+    canvas.height = Math.round(H * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    /* Sprites are sized off W/H; a phone URL-bar collapse (or a desktop
+       drag-resize storm) must not rebuild 20 offscreen canvases per event —
+       first build synchronous, rebuilds debounced. */
+    if (W !== spriteW || Math.abs(H - spriteH) > H * 0.12) {
+      if (!sprMid.length) {
+        spriteW = W; spriteH = H;
+        buildSprites();
+      } else {
+        clearTimeout(spriteTimer);
+        spriteTimer = setTimeout(function () {
+          spriteW = W; spriteH = H;
+          buildSprites();
+          lastDrawnT = -9; /* rm postcards repaint with the resized sprites */
+        }, 150);
+      }
+    }
+    var cr = $('#carRear');
+    rearH = cr ? cr.offsetHeight : 0;
+    lastDrawnT = -9; /* force repaint */
+  }
+
+  /* Deterministic PRNG so the skyline is the same skyline every visit */
+  function mulberry(a) {
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  function hex(c) { return [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)]; }
+  function lerpC(a, b, k) {
+    return 'rgb(' + Math.round(a[0] + (b[0] - a[0]) * k) + ',' + Math.round(a[1] + (b[1] - a[1]) * k) + ',' + Math.round(a[2] + (b[2] - a[2]) * k) + ')';
+  }
+
+  /* Sky keyframes across the journey. 5 stops each; bridged per the outrun
+     law: orange never touches blue without magenta in between. */
+  var SKY_T = [0, 1, 2, 3, 4, 4.9, 6];
+  var SKY = [
+    [[0, '#120230'], [0.42, '#3a0f5e'], [0.66, '#6a00a8'], [0.84, '#d4009f'], [1, '#ff6a00']],
+    [[0, '#05000e'], [0.45, '#120230'], [0.72, '#2a0d52'], [0.9, '#3a0f5e'], [1, '#4a1a75']],
+    [[0, '#05000e'], [0.45, '#0c0c1e'], [0.72, '#2a0d52'], [0.9, '#58164a'], [1, '#b0430f']],
+    [[0, '#05000e'], [0.42, '#0e0430'], [0.68, '#30255f'], [0.88, '#522f81'], [1, '#6a3fa0']],
+    [[0, '#0c0c1e'], [0.4, '#120458'], [0.62, '#580e91'], [0.82, '#C600FF'], [1, '#ff2975']],
+    [[0, '#120458'], [0.32, '#8317d1'], [0.56, '#e01bb4'], [0.74, '#ff3d8f'], [1, '#ff7a1f']],
+    [[0, '#3a0f5e'], [0.26, '#8317d1'], [0.46, '#e01bb4'], [0.64, '#ff3d8f'], [1, '#ffd91f']]
+  ].map(function (ks) { return ks.map(function (s) { return [s[0], hex(s[1])]; }); });
+
+  function skyAt(T) {
+    var i = 0;
+    while (i < SKY_T.length - 2 && T > SKY_T[i + 1]) i++;
+    var k = smooth((T - SKY_T[i]) / (SKY_T[i + 1] - SKY_T[i]));
+    var A = SKY[i], B = SKY[i + 1], out = [];
+    for (var s = 0; s < A.length; s++) {
+      out.push([A[s][0] + (B[s][0] - A[s][0]) * k, lerpC(A[s][1], B[s][1], k)]);
+    }
+    return out;
+  }
+
+  /* ---------- Precomputed world furniture ---------- */
+  var stars = [], shimmer = [], ridgeL = [], ridgeR = [];
+  (function seedWorld() {
+    var r = mulberry(1986);
+    for (var i = 0; i < 110; i++) {
+      stars.push({ x: r(), y: r() * 0.58, r: 0.5 + r() * 1.1, ph: r() * 6.28, sp: 0.4 + r() * 1.4, c: r() < 0.12 ? '#00f2ff' : (r() < 0.2 ? '#ff7bff' : '#ffffff') });
+    }
+    for (i = 0; i < 64; i++) {
+      shimmer.push({ x: r(), y: r(), len: 14 + r() * 60, ph: r() * 6.28, sp: 0.3 + r() * 0.8, c: r() < 0.3 ? '#04d9ff' : (r() < 0.5 ? '#b026ff' : '#ffffff') });
+    }
+    var x, y;
+    for (x = 0; x <= 12; x++) { ridgeL.push([x / 12 * 0.44, (x % 2 ? 0.05 : 0.02) + r() * 0.075]); }
+    for (x = 0; x <= 12; x++) { ridgeR.push([0.56 + x / 12 * 0.44, (x % 2 ? 0.055 : 0.02) + r() * 0.07]); }
+  })();
+
+  /* Building strips (far + mid) and their periods, in world px */
+  var FAR = [], MID = [], FAR_P = 0, MID_P = 0;
+  (function seedCity() {
+    var r = mulberry(305);
+    var x = 0, i;
+    for (i = 0; i < 42; i++) {
+      var w = 26 + r() * 70, h = 0.05 + r() * 0.17;
+      FAR.push({ x: x, w: w, h: h, ant: r() < 0.18 });
+      x += w + 4 + r() * 26;
+    }
+    FAR_P = x + 60;
+    x = 0;
+    for (i = 0; i < 20; i++) {
+      var w2 = 90 + r() * 130, h2 = 0.16 + r() * 0.34;
+      MID.push({ x: x, w: w2, h: h2, seed: (r() * 1e9) | 0, neon: r() < 0.3 ? (r() < 0.5 ? '#ff00ff' : '#00f2ff') : null });
+      x += w2 + 30 + r() * 90;
+    }
+    MID_P = x + 120;
+  })();
+
+  /* ---------- Sprites (pre-rendered once per resize; shadowBlur lives
+     here, at build time, never in the frame loop) ---------- */
+  var sprMid = [], sprPalm = [], sprGlowAmber, sprGlowMoon, sprSun = null, sunR = 0;
+  var PALM_PATHS = [
+    'M98 320 C92 260 100 200 114 128 L126 132 C116 200 108 262 116 320 Z',
+    'M120 126 C150 96 190 88 212 100 C182 102 152 116 128 138 Z',
+    'M120 128 C156 122 196 132 214 154 C184 146 150 142 124 142 Z',
+    'M122 132 C150 148 172 172 178 198 C158 176 136 158 118 146 Z',
+    'M118 126 C92 92 56 82 30 92 C62 96 94 112 112 136 Z',
+    'M118 128 C84 118 44 124 22 144 C54 138 90 140 114 142 Z',
+    'M116 132 C92 150 72 176 68 202 C86 178 106 158 120 146 Z',
+    'M119 124 C116 94 124 66 142 52 C132 76 130 102 126 128 Z'
+  ];
+  function glowSprite(color, size) {
+    var c = document.createElement('canvas'); c.width = c.height = size;
+    var g = c.getContext('2d');
+    var gr = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    gr.addColorStop(0, color); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, size, size);
+    return c;
+  }
+  function buildSprites() {
+    sprGlowAmber = glowSprite('rgba(255,204,0,.5)', 64);
+    sprGlowMoon = glowSprite('rgba(233,237,245,.35)', 128);
+    /* Mid buildings: silhouette + lit windows, one offscreen each */
+    sprMid = MID.map(function (b) {
+      var hpx = Math.max(24, Math.round(b.h * H));
+      var c = document.createElement('canvas');
+      c.width = Math.ceil(b.w); c.height = hpx;
+      var g = c.getContext('2d');
+      g.fillStyle = '#150335';
+      g.fillRect(0, 0, b.w, hpx);
+      g.fillStyle = 'rgba(255,0,255,.06)';
+      g.fillRect(0, 0, b.w, 3);
+      var rr = mulberry(b.seed);
+      var cols = Math.max(2, Math.floor(b.w / 20)), rows = Math.max(3, Math.floor(hpx / 26));
+      for (var ci = 0; ci < cols; ci++) {
+        for (var ri = 0; ri < rows; ri++) {
+          if (rr() < 0.26) {
+            g.fillStyle = rr() < 0.6 ? 'rgba(255,204,0,.75)' : (rr() < 0.8 ? 'rgba(0,242,255,.7)' : 'rgba(255,246,201,.8)');
+            g.fillRect(6 + ci * (b.w - 10) / cols, 8 + ri * (hpx - 12) / rows, 4, 6);
+          }
+        }
+      }
+      if (b.neon) {
+        g.strokeStyle = b.neon; g.lineWidth = 2;
+        g.shadowColor = b.neon; g.shadowBlur = 7;
+        g.strokeRect(1, 1, b.w - 2, hpx - 2);
+        g.shadowBlur = 0;
+      }
+      return c;
+    });
+    /* Palms: Side A's exact fronds, two sizes, soft rim */
+    sprPalm = [0.42, 0.3].map(function (hf) {
+      var hpx = Math.round(hf * H), wpx = Math.round(hpx * 220 / 320);
+      var c = document.createElement('canvas');
+      c.width = wpx; c.height = hpx;
+      var g = c.getContext('2d');
+      g.scale(wpx / 220, hpx / 320);
+      g.fillStyle = '#05000e';
+      g.shadowColor = 'rgba(255,0,255,.35)'; g.shadowBlur = 6;
+      PALM_PATHS.forEach(function (d) { g.fill(new Path2D(d)); });
+      g.beginPath(); g.arc(112, 138, 7, 0, 7); g.fill();
+      g.beginPath(); g.arc(128, 142, 6, 0, 7); g.fill();
+      return c;
+    });
+    sprSun = null; sunR = 0;
+  }
+
+  /* The banded sun: redrawn offscreen only when its radius changes.
+     Slat cuts reuse Side A's hero-sun mask stops. */
+  var sunCanvas = document.createElement('canvas');
+  var SLATS = [[0.54, 0.57], [0.65, 0.69], [0.76, 0.81], [0.87, 0.93]];
+  function sunSprite(r) {
+    if (sprSun && Math.abs(r - sunR) < 0.75) return sunCanvas;
+    sunR = r; sprSun = true;
+    var d = Math.max(4, Math.round(r * 2));
+    sunCanvas.width = d; sunCanvas.height = d;
+    var g = sunCanvas.getContext('2d');
+    var gr = g.createRadialGradient(d / 2, d * 0.32, 0, d / 2, d * 0.42, d * 0.62);
+    gr.addColorStop(0, '#fff6c9'); gr.addColorStop(0.35, '#ffd91f');
+    gr.addColorStop(0.68, '#ff901f'); gr.addColorStop(1, '#ff2975');
+    g.fillStyle = gr;
+    g.beginPath(); g.arc(d / 2, d / 2, d / 2, 0, 7); g.fill();
+    g.globalCompositeOperation = 'destination-out';
+    SLATS.forEach(function (s) { g.fillRect(0, s[0] * d, d, (s[1] - s[0]) * d); });
+    g.globalCompositeOperation = 'source-over';
+    return sunCanvas;
+  }
+  var sprSunGlow = glowSprite('rgba(255,122,31,.55)', 256);
+
+  /* ---------- Render ---------- */
+  var worldX = 0, driftDist = 0, gridPhase = 0, lastDrawnT = -9;
+
+  function drawLayerStrip(list, period, speed, baseY, colorFill, isFar, alpha) {
+    var xoff = (worldX * speed) % period;
+    ctx.globalAlpha = alpha;
+    for (var rep = -1; rep <= Math.ceil(W / period) + 1; rep++) {
+      var ox = rep * period - xoff;
+      if (ox > W || ox + period < -200) continue;
+      for (var i = 0; i < list.length; i++) {
+        var b = list[i], x = ox + b.x;
+        if (x + b.w < -20 || x > W + 20) continue;
+        if (isFar) {
+          var hpx = b.h * H;
+          ctx.fillStyle = colorFill;
+          ctx.fillRect(x, baseY - hpx, b.w, hpx);
+          if (b.ant) {
+            ctx.fillRect(x + b.w / 2 - 1, baseY - hpx - 12, 2, 12);
+            ctx.fillStyle = 'rgba(255,43,43,.8)';
+            ctx.fillRect(x + b.w / 2 - 1.5, baseY - hpx - 15, 3, 3);
+          }
+        } else {
+          var spr = sprMid[i];
+          ctx.drawImage(spr, x, baseY - spr.height);
+        }
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function render(T, time) {
+    var hor = H * (0.70 - 0.08 * smooth((T - 4.4) / 0.7)); /* horizon lifts for the finale stage */
+    var roadTop = H * 0.84;
+
+    /* SKY */
+    var sky = skyAt(T);
+    var g = ctx.createLinearGradient(0, 0, 0, hor + H * 0.06);
+    for (var i = 0; i < sky.length; i++) g.addColorStop(clamp(sky[i][0], 0, 1), sky[i][1]);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, hor + 2);
+
+    /* Ground base under horizon (scene floors paint over this) */
+    ctx.fillStyle = '#05000e';
+    ctx.fillRect(0, hor, W, H - hor);
+
+    /* STARS */
+    var aStars = env(T, 0.55, 1.1, 4.6, 5.4);
+    if (aStars > 0.01) {
+      var sunCX = W / 2, sunCY = hor;
+      var sunMix = smooth((T - 4.5) / 0.3); /* the glow washes nearby stars out gradually */
+      for (i = 0; i < stars.length; i++) {
+        var st = stars[i];
+        var tw = RM ? 0.7 : 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(time * st.sp + st.ph));
+        var sx = st.x * W, sy = st.y * hor;
+        var dimNearSun = sunMix > 0 ? 1 - sunMix * (1 - clamp(Math.hypot(sx - sunCX, sy - sunCY) / (H * 0.5) - 0.3, 0, 1)) : 1;
+        ctx.globalAlpha = aStars * tw * dimNearSun;
+        ctx.fillStyle = st.c;
+        ctx.fillRect(sx, sy, st.r, st.r);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    /* MOON (coast) */
+    var aMoon = env(T, 2.75, 3.15, 4.1, 4.6);
+    var moonX = W * 0.72, moonY = H * 0.2;
+    if (aMoon > 0.01) {
+      ctx.globalAlpha = aMoon;
+      ctx.drawImage(sprGlowMoon, moonX - 64, moonY - 64, 128, 128);
+      ctx.fillStyle = '#f4f6ff';
+      ctx.beginPath(); ctx.arc(moonX, moonY, H * 0.028, 0, 7); ctx.fill();
+      ctx.fillStyle = 'rgba(210,215,235,.55)';
+      ctx.beginPath(); ctx.arc(moonX - H * 0.007, moonY + H * 0.004, H * 0.006, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(moonX + H * 0.009, moonY - H * 0.008, H * 0.004, 0, 7); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    /* THE SUN (rises through TRK 05, swells through TRK 06) */
+    var aSun = env(T, 4.25, 4.95, 6, 6.01);
+    if (aSun > 0.01) {
+      var rise = smooth((T - 4.25) / 0.75);
+      var swell = clamp((T - 5) / 1, 0, 1);
+      var r = H * (0.05 + 0.07 * rise + 0.34 * smooth(swell));
+      var cy = hor + r * (1 - rise) - r * 0.35 * swell; /* high enough that the slats clear the horizon */
+      var spr = sunSprite(r);
+      ctx.globalAlpha = aSun;
+      var gs = r * 5.2;
+      ctx.drawImage(sprSunGlow, W / 2 - gs / 2, cy - gs / 2, gs, gs);
+      /* horizon bloom */
+      var hb = ctx.createLinearGradient(0, hor - H * 0.09, 0, hor + 2);
+      hb.addColorStop(0, 'rgba(255,61,143,0)');
+      hb.addColorStop(1, 'rgba(255,122,31,' + (0.22 + 0.4 * swell) + ')');
+      ctx.fillStyle = hb;
+      ctx.fillRect(0, hor - H * 0.09, W, H * 0.09 + 2);
+      ctx.drawImage(spr, W / 2 - r, cy - r, r * 2, r * 2);
+      ctx.globalAlpha = 1;
+    }
+
+    /* WIREFRAME MOUNTAINS flanking the sun */
+    var aMtn = env(T, 4.05, 4.6, 6, 6.01);
+    if (aMtn > 0.01) {
+      ctx.globalAlpha = aMtn;
+      [ridgeL, ridgeR].forEach(function (ridge) {
+        ctx.beginPath();
+        ctx.moveTo(ridge[0][0] * W, hor + 1);
+        for (var p = 0; p < ridge.length; p++) ctx.lineTo(ridge[p][0] * W, hor - ridge[p][1] * H);
+        ctx.lineTo(ridge[ridge.length - 1][0] * W, hor + 1);
+        ctx.closePath();
+        ctx.fillStyle = '#0c0c1e'; ctx.fill();
+        ctx.strokeStyle = 'rgba(148,0,211,.28)'; ctx.lineWidth = 5; ctx.stroke();
+        ctx.strokeStyle = '#9400D3'; ctx.lineWidth = 1.6; ctx.stroke();
+      });
+      ctx.globalAlpha = 1;
+    }
+
+    /* FAR SKYLINE (dusk city, receding through TRK 03) */
+    var aFar = env(T, -0.5, 0, 2.0, 2.6);
+    if (aFar > 0.01) drawLayerStrip(FAR, FAR_P, 0.07, hor + 2, '#0a0122', true, aFar * 0.9);
+
+    /* MID CITY (TRK 02) */
+    var aCity = env(T, 0.5, 0.95, 1.8, 2.35);
+    if (aCity > 0.01) drawLayerStrip(MID, MID_P, 0.3, roadTop + 4, null, false, aCity);
+
+    /* OCEAN (TRK 04) */
+    var aSea = env(T, 2.8, 3.2, 4.15, 4.7);
+    if (aSea > 0.01) {
+      var seaTop = hor + 2, seaH = roadTop - seaTop;
+      var sg = ctx.createLinearGradient(0, seaTop, 0, roadTop);
+      sg.addColorStop(0, '#0e0430'); sg.addColorStop(1, '#05000e');
+      ctx.globalAlpha = aSea;
+      ctx.fillStyle = sg;
+      ctx.fillRect(0, seaTop, W, seaH);
+      for (i = 0; i < shimmer.length; i++) {
+        var sh = shimmer[i];
+        var glint = RM ? 0.4 : Math.max(0, Math.sin(time * sh.sp + sh.ph));
+        if (glint < 0.05) continue;
+        var sy2 = seaTop + sh.y * sh.y * seaH; /* denser near horizon */
+        var sxx = ((sh.x * W * 2 - worldX * 0.05) % (W * 2) + W * 2) % (W * 2) - W * 0.5;
+        var nearMoon = 1 - clamp(Math.abs(sxx + sh.len / 2 - moonX) / (W * 0.16), 0, 1);
+        ctx.globalAlpha = aSea * glint * (0.12 + sh.y * 0.25 + nearMoon * 0.5 * aMoon);
+        ctx.fillStyle = nearMoon > 0.4 ? '#f4f6ff' : sh.c;
+        ctx.fillRect(sxx, sy2, sh.len * (0.4 + sh.y), 1 + sh.y * 1.6);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    /* GRID FLOOR (bleeds in through TRK 05, owns the finale) */
+    var aGrid = env(T, 3.85, 4.75, 6, 6.01);
+    if (aGrid > 0.01) {
+      var K = H * 0.34;
+      ctx.globalAlpha = aGrid;
+      /* floor glow wash */
+      var fg = ctx.createLinearGradient(0, hor, 0, H);
+      fg.addColorStop(0, 'rgba(88,14,145,.32)'); fg.addColorStop(1, 'rgba(5,0,14,.9)');
+      ctx.fillStyle = fg;
+      ctx.fillRect(0, hor, W, H - hor);
+      /* horizontal lines: geometric z, phase flows toward the viewer */
+      var STEP = 1.31, nLines = 16;
+      var p = gridPhase % 1; if (p < 0) p += 1;
+      var z0 = Math.pow(STEP, 1 - p);
+      for (i = 0; i < nLines; i++) {
+        var z = z0 * Math.pow(STEP, i - 1);
+        if (z < 0.72) continue;
+        var y = hor + K / z;
+        if (y > H + 4) continue;
+        var depth = clamp((y - hor) / (H - hor), 0, 1);
+        ctx.strokeStyle = 'rgba(255,64,255,' + (0.14 + depth * 0.3) + ')';
+        ctx.lineWidth = 1 + depth * 5;
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,140,255,' + (0.35 + depth * 0.6) + ')';
+        ctx.lineWidth = 0.75 + depth * 1.5;
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      }
+      /* vanishing-point rays (static) + the two lane rays */
+      var vpx = W / 2;
+      for (var kk = -9; kk <= 9; kk++) {
+        if (kk === 0) continue;
+        var lane = (kk === -2 || kk === 2);
+        var xb = vpx + kk * W * 0.13;
+        ctx.strokeStyle = lane ? 'rgba(0,242,255,.75)' : 'rgba(255,64,255,.3)';
+        ctx.lineWidth = lane ? 2 : 1.1;
+        ctx.beginPath(); ctx.moveTo(vpx, hor); ctx.lineTo(xb, H + 8); ctx.stroke();
+        if (lane) {
+          ctx.strokeStyle = 'rgba(0,242,255,.2)'; ctx.lineWidth = 6;
+          ctx.beginPath(); ctx.moveTo(vpx, hor); ctx.lineTo(xb, H + 8); ctx.stroke();
+        }
+      }
+      /* horizon line */
+      ctx.strokeStyle = 'rgba(0,242,255,.9)'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(0, hor); ctx.lineTo(W, hor); ctx.stroke();
+      ctx.strokeStyle = 'rgba(0,242,255,.22)'; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.moveTo(0, hor); ctx.lineTo(W, hor); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    /* STREETLIGHTS (TRK 03) */
+    var aLamp = env(T, 1.7, 2.05, 2.9, 3.35);
+    if (aLamp > 0.01) {
+      var LP = 430;
+      var lxoff = worldX % LP;
+      ctx.globalAlpha = aLamp;
+      for (var lx = -lxoff; lx < W + LP; lx += LP) {
+        var topY = H * 0.38;
+        ctx.strokeStyle = '#0a0120'; ctx.lineWidth = 6;
+        ctx.beginPath(); ctx.moveTo(lx, roadTop + 10); ctx.lineTo(lx, topY); ctx.lineTo(lx + 46, topY + 8); ctx.stroke();
+        ctx.drawImage(sprGlowAmber, lx + 46 - 26, topY + 8 - 26, 52, 52);
+        ctx.fillStyle = '#ffe9a0';
+        ctx.fillRect(lx + 40, topY + 5, 12, 5);
+        var cg = ctx.createLinearGradient(0, topY, 0, roadTop);
+        cg.addColorStop(0, 'rgba(255,204,0,.14)'); cg.addColorStop(1, 'rgba(255,204,0,0)');
+        ctx.fillStyle = cg;
+        ctx.beginPath();
+        ctx.moveTo(lx + 40, topY + 10); ctx.lineTo(lx + 52, topY + 10);
+        ctx.lineTo(lx + 92, roadTop); ctx.lineTo(lx, roadTop);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    /* PALMS (TRK 04) */
+    var aPalm = env(T, 2.85, 3.25, 3.95, 4.35);
+    if (aPalm > 0.01) {
+      ctx.globalAlpha = aPalm;
+      var PP = 760, pxoff = (worldX * 1.12) % PP;
+      /* sprite identity keys to the world lattice slot, not draw order —
+         otherwise every visible palm swaps sizes each time pxoff wraps */
+      var pi = Math.floor(worldX * 1.12 / PP);
+      for (var px = -pxoff - 300; px < W + PP; px += PP) {
+        var spr2 = sprPalm[pi++ % 2];
+        ctx.drawImage(spr2, px, roadTop + 26 - spr2.height);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    /* SIDE ROAD (TRK 01–05, dissolves under the drift) */
+    var aRoad = env(T, -0.5, 0, 4.5, 4.95);
+    if (aRoad > 0.01) {
+      ctx.globalAlpha = aRoad;
+      var rg = ctx.createLinearGradient(0, roadTop, 0, H);
+      rg.addColorStop(0, '#0b0120'); rg.addColorStop(0.12, '#08001a'); rg.addColorStop(1, '#05000e');
+      ctx.fillStyle = rg;
+      ctx.fillRect(0, roadTop, W, H - roadTop);
+      ctx.fillStyle = 'rgba(233,237,245,.3)';
+      ctx.fillRect(0, roadTop + 3, W, 2);
+      var DP = 190, dxoff = (worldX * 1.35) % DP;
+      ctx.fillStyle = 'rgba(255,204,0,.5)';
+      var laneY = roadTop + (H - roadTop) * 0.52;
+      for (var dx = -dxoff; dx < W + DP; dx += DP) ctx.fillRect(dx, laneY, 86, 4);
+      /* wet neon reflection under the car */
+      var carX = W * 0.42;
+      var wg = ctx.createLinearGradient(carX - 160, 0, carX + 200, 0);
+      wg.addColorStop(0, 'rgba(255,0,255,0)'); wg.addColorStop(0.4, 'rgba(255,0,255,.1)');
+      wg.addColorStop(0.7, 'rgba(0,242,255,.1)'); wg.addColorStop(1, 'rgba(0,242,255,0)');
+      ctx.fillStyle = wg;
+      ctx.fillRect(carX - 160, roadTop + 8, 360, H - roadTop - 8);
+      ctx.globalAlpha = 1;
+    }
+
+    /* WHITEOUT — the sun takes the frame */
+    var white = smooth((T - 5.78) / 0.22) * 0.94;
+    if (white > 0.005) {
+      ctx.fillStyle = 'rgba(255,246,201,' + white + ')';
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    if (!firstPaint) {
+      firstPaint = true;
+      var fb = $('#stageFallback');
+      if (fb) fb.style.display = 'none';
+    }
+  }
+
+  /* ============================================================
+     DRIFT STATIC — the analog camera swap (scroll-driven tent)
+     ============================================================ */
+  var driftC = $('#driftfx'), dctx = driftC ? driftC.getContext('2d') : null;
+  var driftImg = dctx ? dctx.createImageData(160, 90) : null;
+  function driftTent(T) { return clamp(1 - Math.abs(T - 4.8) / 0.32, 0, 1); }
+  function paintDrift(a) {
+    if (!dctx) return;
+    if (a < 0.02 || RM) { driftC.style.opacity = 0; return; }
+    var d = driftImg.data;
+    for (var i = 0; i < d.length; i += 4) {
+      var v = 90 + ((Math.random() * 60) | 0);
+      d[i] = v; d[i + 1] = v; d[i + 2] = v; d[i + 3] = 255;
+    }
+    dctx.putImageData(driftImg, 0, 0);
+    driftC.style.opacity = (a * 0.55).toFixed(3);
+  }
+
+  /* ============================================================
+     COPY CHOREOGRAPHY + RAIL + HUD
+     ============================================================ */
+  var railLinks = $$('.rail a');
+  var hudTrk = $('#hudTrk'), hudCounter = $('#hudCounter');
+  var dashMph = document.querySelector('#dashSpeed b');
+  var sceneOps = scenes.map(function () { return -1; });
+  var activeIx = -1, lastCounter = '';
+
+  function choreo(T) {
+    for (var i = 0; i < N; i++) {
+      var pr = clamp(T - i, 0, 1);
+      var op;
+      if (i === 0) op = T > 1 ? 0 : smooth(1 - pr / 0.62);
+      else if (i === N - 1) op = T < i ? 0 : smooth(pr / 0.4) * (1 - smooth((T - 5.72) / 0.2));
+      else op = (T < i || T > i + 1) ? 0 : smooth(1 - Math.abs(pr - 0.5) / 0.5);
+      var el = scenes[i];
+      if (Math.abs(op - sceneOps[i]) > 0.008 || (op === 0) !== (sceneOps[i] === 0)) {
+        sceneOps[i] = op;
+        el.style.opacity = op.toFixed(3);
+        el.style.visibility = op < 0.004 ? 'hidden' : 'visible';
+        el.classList.toggle('on', op > 0.5);
+      }
+      if (op > 0 && !RM) el.style.setProperty('--drift', ((0.5 - pr) * 4).toFixed(2) + 'vh');
+    }
+    var ix = clamp(Math.floor(T + 0.0001), 0, N - 1);
+    if (ix !== activeIx) {
+      activeIx = ix;
+      railLinks.forEach(function (l, k) {
+        l.classList.toggle('active', k === ix);
+        if (k === ix) l.setAttribute('aria-current', 'true');
+        else l.removeAttribute('aria-current');
+      });
+      if (hudTrk) hudTrk.textContent = 'TRK 0' + (ix + 1);
+      if (AE.blip) AE.blip();
+    }
+  }
+
+  railLinks.forEach(function (l) {
+    l.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      var i = +l.dataset.i;
+      var b = bands[i];
+      scrollTo({ top: b.start + (b.end - b.start) * 0.5, behavior: RM ? 'auto' : 'smooth' });
+      /* replaceState fires no hashchange and no scroll; hashJump only reads
+         the hash at ignition, so the URL can reflect the track safely */
+      try { history.replaceState(null, '', '#trk0' + (i + 1)); } catch (e) {}
+    });
+  });
+  var rewBtn = $('#rewBtn');
+  if (rewBtn) rewBtn.addEventListener('click', function () {
+    scrollTo({ top: 0, behavior: RM ? 'auto' : 'smooth' });
+  });
+
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+  /* ============================================================
+     THE CAR — wheels follow the world, rear view owns the finale
+     ============================================================ */
+  var car = $('#car'), carRear = $('#carRear');
+  var wFs = $('#wFs'), wRs = $('#wRs');
+  var rot = 0, lastWorldX = 0, carOp = -1, rearOp = -1, carFast = false;
+
+  function carUpdate(T, time, velPxs) {
+    /* side car: TRK 01–05, gone under the drift */
+    var op = 1 - smooth((T - 4.5) / 0.32);
+    if (Math.abs(op - carOp) > 0.01) {
+      carOp = op;
+      car.style.opacity = op.toFixed(3);
+      car.style.visibility = op < 0.01 ? 'hidden' : 'visible';
+    }
+    if (op > 0.01 && !RM) {
+      var bob = Math.sin(time * 18) * 1.6;
+      var lean = clamp(velPxs / 900, 0, 1) * 8;
+      car.style.transform = 'translateX(calc(-58% + ' + lean.toFixed(1) + 'px)) translateY(' + bob.toFixed(1) + 'px)';
+      var d = worldX - lastWorldX;
+      rot = (rot + d * 1.5) % 360;
+      var rs = 'rotate(' + rot.toFixed(0) + ')';
+      if (wFs) wFs.setAttribute('transform', rs);
+      if (wRs) wRs.setAttribute('transform', rs);
+    }
+    var fast = !RM && (velPxs > 850 || turboLeft > 0);
+    if (fast !== carFast) { carFast = fast; car.classList.toggle('fast', fast); }
+
+    /* rear car: appears in the swap, pulls away into the sun */
+    var rop = smooth((T - 4.72) / 0.3) * (1 - smooth((T - 5.72) / 0.12));
+    if (Math.abs(rop - rearOp) > 0.008 || rop > 0) {
+      rearOp = rop;
+      carRear.style.opacity = rop.toFixed(3);
+      carRear.style.visibility = rop < 0.01 ? 'hidden' : 'visible';
+      if (rop > 0.01) {
+        var z = T <= 5.05 ? 1 : 1 + Math.pow((T - 5.05) / 0.8, 2.2) * 15;
+        var s = 1 / z;
+        var hor = H * (0.70 - 0.08 * smooth((T - 4.4) / 0.7));
+        var bottomY = hor + (H - hor) * (0.05 + 0.84 / z);
+        var h0 = rearH || carRear.offsetHeight || 1;
+        var sway = RM ? 0 : Math.sin(T * 6.3) * 22 * s;
+        carRear.style.transform = 'translate(calc(-50% + ' + sway.toFixed(1) + 'px),' + (bottomY - h0).toFixed(1) + 'px) scale(' + s.toFixed(4) + ')';
+      }
+    }
+  }
+
+  /* horn + headlight flash on tapping the car */
+  var carHit = $('#carHit');
+  if (carHit) carHit.addEventListener('pointerdown', function () {
+    car.classList.add('lit');
+    setTimeout(function () { car.classList.remove('lit'); }, 1400);
+    if (AE.horn) AE.horn();
+  });
+
+  /* ============================================================
+     MAIN LOOP
+     ============================================================ */
+  var lastNow = performance.now();
+  var velSm = 0, lastY = scrollY, mphShown = '';
+  var turboLeft = 0, idleSpeed = 85;
+  var lastStaticIx = -1;
+
+  function frame(now) {
+    requestAnimationFrame(frame);
+    var dt = clamp((now - lastNow) / 1000, 0, 0.05);
+    lastNow = now;
+    var time = now / 1000;
+
+    /* Recover from a zero-size load (hidden tab, collapsed pane): the first
+       frame with a real viewport re-lays the whole journey out. Snap curT —
+       nothing was ever visible, so this is a power-on, not a rewind. */
+    if (vh < 2 && innerHeight > 2) { layout(); resizeCanvas(); curT = targetT; }
+
+    if (turboLeft > 0) turboLeft = Math.max(0, turboLeft - dt);
+
+    /* lerp the journey time; dt-normalized so flicks feel like inertia */
+    var k = RM ? 1 : 1 - Math.pow(0.82, dt * 60);
+    curT += (targetT - curT) * k;
+    if (Math.abs(targetT - curT) < 0.0004) curT = targetT;
+
+    /* the world keeps rolling a little even when you don't scroll */
+    if (!RM && !document.hidden) driftDist += dt * idleSpeed * (turboLeft > 0 ? 4.2 : 1);
+    lastWorldX = worldX;
+    worldX = curT * 2600 + driftDist;
+    gridPhase += dt * (RM ? 0 : (turboLeft > 0 ? 3.2 : 0.9)) + (worldX - lastWorldX) * 0.0012;
+
+    /* scroll velocity → dash speed */
+    var y = scrollY;
+    var v = dt > 0 ? Math.abs(y - lastY) / dt : 0;
+    lastY = y;
+    velSm += (v - velSm) * Math.min(1, dt * 7);
+    var mph = RM ? '--' : (turboLeft > 0 ? '88' : pad2(Math.min(88, Math.round((curT >= 5.85 ? 0 : 30) + velSm * 0.04))));
+    if (mph !== mphShown && dashMph) {
+      mphShown = mph;
+      dashMph.textContent = mph;
+    }
+
+    /* tape counter follows the scroll */
+    var secs = Math.round(227 * clamp(y / Math.max(1, trackH - vh), 0, 1));
+    var cnt = '0:' + pad2(Math.floor(secs / 60)) + ':' + pad2(secs % 60);
+    if (cnt !== lastCounter && hudCounter) { lastCounter = cnt; hudCounter.textContent = cnt; }
+
+    if (RM) {
+      /* static postcards: one painted frame per track. lastDrawnT === -9
+         means the canvas was cleared (resize/rotate) and must repaint even
+         though the scene index didn't change. */
+      var six = clamp(Math.floor(curT + 0.0001), 0, N - 1);
+      if (six !== lastStaticIx || lastDrawnT === -9) {
+        lastStaticIx = six;
+        lastDrawnT = six;
+        render(six + 0.5, 0);
+      }
+    } else if (!document.hidden) {
+      render(curT, time);
+      paintDrift(driftTent(curT));
+    }
+
+    choreo(curT);
+    carUpdate(RM ? clamp(Math.floor(curT + 0.0001), 0, N - 1) + 0.5 : curT, time, velSm);
+    audioSync(curT);
+  }
+
+  /* ============================================================
+     NIGHT DRIVE FM — the Side A engine, taught to read the road.
+     One record; the arrangement follows the journey: each track of
+     the tape adds a layer, the finale lifts two semitones, and at
+     the end the tape runs out into the ocean.
+     ============================================================ */
+  var audioBtn = $('#audioBtn');
+  var npTicker = $('#npTicker'), npText = $('#npText');
+  var audioCtx = null, masterGain = null, comp = null, musicBus = null, sfxBus = null, pumpBus = null;
+  var delaySend = null, delayNode = null, noiseBuf = null, hissGain = null;
+  var gateConv = null, gateG = null, wobbleG = null;
+  var wavesGain = null, wavesBuilt = false;
+  var driftGain = null, lastDriftA = 0;
+  var radioTimer = null, radioStep = 0, radioNextT = 0;
+  var autoOnAt = -1;
+
+  var sceneIx = 0, lift = false, liftPending = false, runout = false, lastTapeOut = -9;
+
+  var NOTE_IDX = { 'C': 0, 'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5, 'F#': 6, 'G': 7, 'G#': 8, 'A': 9, 'A#': 10, 'B': 11 };
+  function freq(n) {
+    var m = /^([A-G]#?)(\d)$/.exec(n);
+    return 440 * Math.pow(2, ((NOTE_IDX[m[1]] + (parseInt(m[2], 10) + 1) * 12) - 69) / 12);
+  }
+  var LIFT = Math.pow(2, 2 / 12);
+  function fq(n) { return freq(n) * (lift ? LIFT : 1); }
+
+  /* The record. Same harmonic family as "Chrome Horizon" — this is the
+     station's flagship pressing — but every figure here is its own. */
+  var BASS = [0, 2, 4, 6, 8, 10, 12, 14];
+  var DRIVE = {
+    title: '"NIGHT DRIVE" · A. Caleb & The Skywave Orchestra',
+    bpm: 104,
+    prog: ['Am7', 'Am7', 'Fmaj7', 'Fmaj7', 'Cmaj7', 'Cmaj7', 'Gadd9', 'Gadd9'],
+    chords: {
+      'Am7': { pad: ['A2', 'G3', 'C4', 'E4'], root: 'A1' },
+      'Fmaj7': { pad: ['F2', 'A3', 'C4', 'E4'], root: 'F1' },
+      'Cmaj7': { pad: ['C3', 'G3', 'B3', 'E4'], root: 'C2' },
+      'Gadd9': { pad: ['G2', 'B3', 'D4', 'A4'], root: 'G1' }
+    },
+    arps: {
+      'Am7': ['E4', 'A4', 'C5', 'E5', 'G5', 'E5', 'C5', 'A4'],
+      'Fmaj7': ['C4', 'F4', 'A4', 'C5', 'E5', 'C5', 'A4', 'F4'],
+      'Cmaj7': ['G4', 'B4', 'C5', 'E5', 'G5', 'E5', 'C5', 'B4'],
+      'Gadd9': ['D4', 'G4', 'A4', 'B4', 'D5', 'B4', 'A4', 'G4']
+    },
+    kick: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+    snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+    hat: [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 2, 0],
+    hatBusy: [1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 2, 0],
+    melody: [
+      { bar: 4, step: 0, note: 'E5', len: 3 }, { bar: 4, step: 4, note: 'D5', len: 2 },
+      { bar: 4, step: 8, note: 'C5', len: 3 }, { bar: 4, step: 12, note: 'D5', len: 2 }, { bar: 4, step: 14, note: 'E5', len: 2 },
+      { bar: 5, step: 0, note: 'G5', len: 4 }, { bar: 5, step: 8, note: 'E5', len: 3 }, { bar: 5, step: 12, note: 'C5', len: 3 },
+      { bar: 6, step: 0, note: 'A5', len: 4 }, { bar: 6, step: 6, note: 'G5', len: 2 }, { bar: 6, step: 8, note: 'E5', len: 2 },
+      { bar: 6, step: 10, note: 'D5', len: 2 }, { bar: 6, step: 12, note: 'C5', len: 2 }, { bar: 6, step: 14, note: 'D5', len: 2 },
+      { bar: 7, step: 0, note: 'D5', len: 3 }, { bar: 7, step: 4, note: 'B4', len: 2 },
+      { bar: 7, step: 8, note: 'A4', len: 3 }, { bar: 7, step: 12, note: 'G4', len: 4 }
+    ]
+  };
+  var PADCUT = [650, 850, 1000, 1200, 1450, 1900];
+  var SPB = 60 / DRIVE.bpm / 4;
+
+  function buildAudio() {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+    audioCtx = new AC();
+    masterGain = audioCtx.createGain(); masterGain.gain.value = 0.12;
+    masterGain.connect(audioCtx.destination);
+    /* External interruptions (iOS call banner, Siri, route theft) suspend the
+       context without a visibilitychange. One polite resume attempt, then the
+       UI stops claiming On Air. UI-only demotion — aci_audio is untouched, so
+       the listener's tune-in intent survives the interruption. */
+    audioCtx.onstatechange = function () {
+      if (!AE.on || audioCtx.state === 'running' || document.hidden) return;
+      var demote = function () {
+        if (AE.on && audioCtx.state !== 'running' && !document.hidden) {
+          radioOff();
+          applyAudioUI(false);
+        }
+      };
+      var p = audioCtx.resume();
+      if (p && p.then) p.then(demote, demote); else demote();
+    };
+    comp = audioCtx.createDynamicsCompressor();
+    comp.threshold.value = -20; comp.knee.value = 15; comp.ratio.value = 4;
+    comp.attack.value = 0.004; comp.release.value = 0.25;
+    comp.connect(masterGain);
+    musicBus = audioCtx.createGain(); musicBus.gain.value = 0.0001; musicBus.connect(comp);
+    sfxBus = audioCtx.createGain(); sfxBus.gain.value = 0.7; sfxBus.connect(comp);
+    /* tonal voices ride the pump bus so the kick can duck them (the
+       sidechain feel, scheduled — WebAudio has no real sidechain input) */
+    pumpBus = audioCtx.createGain(); pumpBus.gain.value = 1; pumpBus.connect(musicBus);
+
+    delaySend = audioCtx.createGain(); delaySend.gain.value = 1;
+    delayNode = audioCtx.createDelay(1); delayNode.delayTime.value = SPB * 3;
+    var fbHp = audioCtx.createBiquadFilter(); fbHp.type = 'highpass'; fbHp.frequency.value = 500;
+    var fb = audioCtx.createGain(); fb.gain.value = 0.35;
+    delaySend.connect(delayNode); delayNode.connect(fbHp); fbHp.connect(fb); fb.connect(delayNode);
+    var wet = audioCtx.createGain(); wet.gain.value = 0.3;
+    delayNode.connect(wet); wet.connect(pumpBus);
+
+    var nlen = audioCtx.sampleRate;
+    noiseBuf = audioCtx.createBuffer(1, nlen, audioCtx.sampleRate);
+    var nch = noiseBuf.getChannelData(0);
+    for (var i = 0; i < nlen; i++) nch[i] = Math.random() * 2 - 1;
+
+    /* gated-reverb snare: one shared convolver (generated IR: exponentially
+       decaying noise), gated hard 130ms after each hit — the 80s in a node */
+    gateConv = audioCtx.createConvolver();
+    var irLen = Math.floor(1.7 * audioCtx.sampleRate);
+    var ir = audioCtx.createBuffer(2, irLen, audioCtx.sampleRate);
+    for (var ch = 0; ch < 2; ch++) {
+      var ich = ir.getChannelData(ch);
+      for (var j = 0; j < irLen; j++) ich[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / irLen, 2.8);
+    }
+    gateConv.buffer = ir;
+    var gateLp = audioCtx.createBiquadFilter(); gateLp.type = 'lowpass'; gateLp.frequency.value = 5200;
+    gateG = audioCtx.createGain(); gateG.gain.value = 0.0001;
+    gateConv.connect(gateLp); gateLp.connect(gateG); gateG.connect(musicBus);
+
+    /* one slow wobble LFO detunes the whole tape together */
+    var wob = audioCtx.createOscillator(); wob.frequency.value = 0.7;
+    wobbleG = audioCtx.createGain(); wobbleG.gain.value = 4.5;
+    wob.connect(wobbleG); wob.start();
+
+    /* tape hiss floor */
+    var hlen = 2 * audioCtx.sampleRate;
+    var hbuf = audioCtx.createBuffer(1, hlen, audioCtx.sampleRate);
+    var hch = hbuf.getChannelData(0);
+    for (var j2 = 0; j2 < hlen; j2++) hch[j2] = Math.random() * 2 - 1;
+    var hiss = audioCtx.createBufferSource(); hiss.buffer = hbuf; hiss.loop = true;
+    var hf = audioCtx.createBiquadFilter(); hf.type = 'lowpass'; hf.frequency.value = 6000;
+    hissGain = audioCtx.createGain(); hissGain.gain.value = 0.01;
+    hiss.connect(hf); hf.connect(hissGain); hissGain.connect(comp);
+    hiss.start();
+
+    /* the camera-swap static, audible only while the picture drifts */
+    var dsrc = audioCtx.createBufferSource(); dsrc.buffer = noiseBuf; dsrc.loop = true;
+    var dbp = audioCtx.createBiquadFilter(); dbp.type = 'bandpass'; dbp.frequency.value = 1400; dbp.Q.value = 0.8;
+    driftGain = audioCtx.createGain(); driftGain.gain.value = 0.0001;
+    dsrc.connect(dbp); dbp.connect(driftGain); driftGain.connect(sfxBus);
+    dsrc.start();
+    return true;
+  }
+
+  function noiseVoice(t, dur, filterType, cutoff, q, peak, dest) {
+    var src = audioCtx.createBufferSource(); src.buffer = noiseBuf;
+    var f = audioCtx.createBiquadFilter(); f.type = filterType; f.frequency.value = cutoff; f.Q.value = q || 0.7;
+    var g = audioCtx.createGain();
+    g.gain.setValueAtTime(peak, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    src.connect(f); f.connect(g); g.connect(dest || musicBus);
+    src.start(t); src.stop(t + dur + 0.02);
+  }
+  function vKick(t) {
+    var o = audioCtx.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(150, t);
+    o.frequency.exponentialRampToValueAtTime(45, t + 0.09);
+    var g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.85, t + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+    o.connect(g); g.connect(musicBus);
+    o.start(t); o.stop(t + 0.22);
+    /* the pump: duck the tonal bus, breathe back before the next 8th */
+    pumpBus.gain.cancelScheduledValues(t);
+    pumpBus.gain.setValueAtTime(1, t);
+    pumpBus.gain.linearRampToValueAtTime(0.62, t + 0.02);
+    pumpBus.gain.linearRampToValueAtTime(1, t + 0.28);
+  }
+  function vSnare(t) {
+    var src = audioCtx.createBufferSource(); src.buffer = noiseBuf;
+    var f = audioCtx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1800;
+    var g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.5, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    src.connect(f); f.connect(g); g.connect(musicBus);
+    /* wet send into the gated plate */
+    var send = audioCtx.createGain(); send.gain.value = 0.55;
+    f.connect(send); send.connect(gateConv);
+    gateG.gain.cancelScheduledValues(t);
+    gateG.gain.setValueAtTime(0.5, t);
+    gateG.gain.setValueAtTime(0.5, t + 0.13);
+    gateG.gain.linearRampToValueAtTime(0.0001, t + 0.165);
+    src.start(t); src.stop(t + 0.16);
+    var o = audioCtx.createOscillator(); o.type = 'triangle'; o.frequency.value = 190;
+    var g2 = audioCtx.createGain();
+    g2.gain.setValueAtTime(0.3, t);
+    g2.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+    o.connect(g2); g2.connect(musicBus);
+    o.start(t); o.stop(t + 0.1);
+  }
+  function vHat(t, open) {
+    noiseVoice(t, open ? 0.25 : 0.035, 'highpass', 7000, 0.7, open ? 0.22 : 0.18, musicBus);
+  }
+  function vBass(t, f, len) {
+    var o1 = audioCtx.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = f;
+    var o2 = audioCtx.createOscillator(); o2.type = 'square'; o2.frequency.value = f / 2;
+    var g2 = audioCtx.createGain(); g2.gain.value = 0.4;
+    var lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 1.2;
+    lp.frequency.setValueAtTime(1150, t);
+    lp.frequency.exponentialRampToValueAtTime(650, t + 0.08);
+    var g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.45, t + 0.004);
+    g.gain.linearRampToValueAtTime(0.45 * 0.55, t + 0.1);
+    g.gain.setValueAtTime(0.45 * 0.55, t + len);
+    g.gain.linearRampToValueAtTime(0.0001, t + len + 0.05);
+    o1.connect(lp); o2.connect(g2); g2.connect(lp);
+    lp.connect(g); g.connect(pumpBus);
+    o1.start(t); o2.start(t);
+    o1.stop(t + len + 0.1); o2.stop(t + len + 0.1);
+  }
+  function vPad(t, notes, len, cut) {
+    var lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = cut; lp.Q.value = 0.6;
+    var g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.28, t + 0.8);
+    g.gain.linearRampToValueAtTime(0.28 * 0.8, t + 1.3);
+    g.gain.setValueAtTime(0.28 * 0.8, t + len - 0.2);
+    g.gain.linearRampToValueAtTime(0.0001, t + len + 1.5);
+    lp.connect(g); g.connect(pumpBus);
+    notes.forEach(function (n) {
+      var f = fq(n);
+      [['sawtooth', -7], ['sawtooth', 7], ['triangle', 0]].forEach(function (spec) {
+        var o = audioCtx.createOscillator();
+        o.type = spec[0]; o.frequency.value = f; o.detune.value = spec[1];
+        wobbleG.connect(o.detune);
+        var og = audioCtx.createGain(); og.gain.value = 1 / (notes.length * 2.4);
+        o.connect(og); og.connect(lp);
+        o.start(t); o.stop(t + len + 1.6);
+        /* release the immortal wobble edge or the dead voice is pinned forever */
+        o.onended = function () { try { wobbleG.disconnect(o.detune); } catch (e) {} o.onended = null; };
+      });
+    });
+  }
+  function vArp(t, f, amp) {
+    var o = audioCtx.createOscillator(); o.type = 'square'; o.frequency.value = f;
+    wobbleG.connect(o.detune);
+    var lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2500; lp.Q.value = 1;
+    var g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(amp || 0.16, t + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    o.connect(lp); lp.connect(g); g.connect(pumpBus);
+    var send = audioCtx.createGain(); send.gain.value = 0.3;
+    g.connect(send); send.connect(delaySend);
+    o.start(t); o.stop(t + 0.18);
+    o.onended = function () { try { wobbleG.disconnect(o.detune); } catch (e) {} o.onended = null; };
+  }
+  function vLead(t, f, len, big) {
+    var g = audioCtx.createGain();
+    var peak = big ? 0.34 : 0.3;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(peak, t + 0.01);
+    g.gain.linearRampToValueAtTime(peak * 0.6, t + 0.21);
+    g.gain.setValueAtTime(peak * 0.6, t + len);
+    g.gain.linearRampToValueAtTime(0.0001, t + len + 0.25);
+    var lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = big ? 4200 : 3200;
+    lp.connect(g); g.connect(pumpBus);
+    var send = audioCtx.createGain(); send.gain.value = 0.5;
+    g.connect(send); send.connect(delaySend);
+    var lfo = audioCtx.createOscillator(); lfo.frequency.value = 5.5;
+    var lfoG = audioCtx.createGain(); lfoG.gain.setValueAtTime(0, t);
+    lfoG.gain.setValueAtTime(0, t + 0.15);
+    lfoG.gain.linearRampToValueAtTime(6, t + 0.3);
+    lfo.connect(lfoG);
+    var specs = big ? [['sawtooth', 0], ['triangle', 4], ['sawtooth', 1204]] : [['sawtooth', 0], ['triangle', 4]];
+    specs.forEach(function (spec) {
+      var o = audioCtx.createOscillator();
+      o.type = spec[0]; o.frequency.value = f; o.detune.value = spec[1];
+      lfoG.connect(o.detune);
+      wobbleG.connect(o.detune);
+      o.connect(lp);
+      o.start(t); o.stop(t + len + 0.3);
+      o.onended = function () { try { wobbleG.disconnect(o.detune); } catch (e) {} o.onended = null; };
+    });
+    lfo.start(t); lfo.stop(t + len + 0.3);
+  }
+
+  function playStep(sIB, bar, t) {
+    var T = DRIVE, s = sceneIx;
+    var drums = s >= 1, snareOn = s >= 2, busy = s >= 3, leadOn = s >= 3, leadFull = s >= 4, finale = s >= 5;
+    if (drums && T.kick[sIB]) vKick(t);
+    if (snareOn && T.snare[sIB]) vSnare(t);
+    var hp = busy ? T.hatBusy : T.hat;
+    if (drums && hp[sIB]) vHat(t, hp[sIB] === 2);
+    var chord = T.chords[T.prog[bar]];
+    if (s >= 1) {
+      var bi = BASS.indexOf(sIB);
+      if (bi !== -1) vBass(t, fq(chord.root) * (bi % 2 ? 2 : 1), SPB * 1.8);
+      if (bar === 7 && sIB === 15) vBass(t, fq(chord.root) * Math.pow(2, 5 / 12), SPB * 0.9);
+    }
+    if (bar % 2 === 0 && sIB === 0) vPad(t, chord.pad, SPB * 32, PADCUT[s]);
+    vArp(t, fq(T.arps[T.prog[bar]][sIB % 8]), s === 0 ? 0.11 : 0.16);
+    if (leadOn) {
+      for (var i = 0; i < T.melody.length; i++) {
+        var m = T.melody[i];
+        if (m.bar !== bar || m.step !== sIB) continue;
+        if (!leadFull && m.bar < 6) continue;
+        vLead(t, fq(m.note), m.len * SPB, finale);
+        if (finale) vLead(t, fq(m.note) * 2, m.len * SPB, false);
+      }
+    }
+  }
+
+  function schedule() {
+    var now = audioCtx.currentTime;
+    if (radioNextT < now) radioNextT = now + 0.03; /* re-anchor a late grid — never flam */
+    /* two steps of look-ahead: jank up to ~300ms is absorbed instead of
+       dragging the tempo (0.12s was less than one step at 104 BPM) */
+    var AHEAD = SPB * 2 + 0.02;
+    while (radioNextT < now + AHEAD) {
+      if (radioStep === 0 && liftPending !== lift) lift = liftPending;
+      if (!runout) playStep(radioStep % 16, Math.floor(radioStep / 16), radioNextT);
+      radioNextT += SPB;
+      radioStep = (radioStep + 1) % 128;
+    }
+  }
+
+  /* the tape runs out: one last major chord falls off pitch into the waves */
+  function vTapeOut() {
+    /* scrubbing back and forth across the runout must not stack chords:
+       one per tail length (the 4.6s oscillator tail fits inside 5s) */
+    if (audioCtx.currentTime - lastTapeOut < 5) return;
+    lastTapeOut = audioCtx.currentTime;
+    var t = audioCtx.currentTime;
+    var lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2400;
+    var g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.34, t + 0.4);
+    g.gain.linearRampToValueAtTime(0.0001, t + 4.4);
+    lp.connect(g); g.connect(musicBus);
+    ['C3', 'G3', 'E4', 'B4', 'E5'].forEach(function (n) {
+      var f = freq(n) * (lift ? LIFT : 1);
+      [['sawtooth', -6], ['sawtooth', 6], ['triangle', 0]].forEach(function (spec) {
+        var o = audioCtx.createOscillator();
+        o.type = spec[0]; o.frequency.value = f;
+        o.detune.setValueAtTime(spec[1], t);
+        o.detune.linearRampToValueAtTime(spec[1] - 280, t + 3.1);
+        var og = audioCtx.createGain(); og.gain.value = 1 / 12;
+        o.connect(og); og.connect(lp);
+        o.start(t); o.stop(t + 4.6);
+      });
+    });
+    /* tape-stop whoosh */
+    var src = audioCtx.createBufferSource(); src.buffer = noiseBuf;
+    var bp = audioCtx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1;
+    bp.frequency.setValueAtTime(2600, t);
+    bp.frequency.exponentialRampToValueAtTime(240, t + 1.2);
+    var ng = audioCtx.createGain();
+    ng.gain.setValueAtTime(0.09, t);
+    ng.gain.exponentialRampToValueAtTime(0.001, t + 1.3);
+    src.connect(bp); bp.connect(ng); ng.connect(sfxBus);
+    src.start(t); src.stop(t + 1.4);
+  }
+  function buildWaves() {
+    if (wavesBuilt) return;
+    wavesBuilt = true;
+    wavesGain = audioCtx.createGain(); wavesGain.gain.value = 0.0001;
+    wavesGain.connect(comp);
+    var body = audioCtx.createBufferSource(); body.buffer = noiseBuf; body.loop = true;
+    var lp1 = audioCtx.createBiquadFilter(); lp1.type = 'lowpass'; lp1.frequency.value = 420; lp1.Q.value = 0.5;
+    var g1 = audioCtx.createGain(); g1.gain.value = 0.5;
+    body.connect(lp1); lp1.connect(g1); g1.connect(wavesGain);
+    body.start();
+    var swl = audioCtx.createBufferSource(); swl.buffer = noiseBuf; swl.loop = true;
+    var lp2 = audioCtx.createBiquadFilter(); lp2.type = 'lowpass'; lp2.frequency.value = 700; lp2.Q.value = 0.6;
+    var g2 = audioCtx.createGain(); g2.gain.value = 0.22;
+    swl.connect(lp2); lp2.connect(g2); g2.connect(wavesGain);
+    swl.start();
+    var lfo = audioCtx.createOscillator(); lfo.frequency.value = 0.14;
+    var lfoF = audioCtx.createGain(); lfoF.gain.value = 420;
+    lfo.connect(lfoF); lfoF.connect(lp2.frequency);
+    var lfoA = audioCtx.createGain(); lfoA.gain.value = 0.15;
+    lfo.connect(lfoA); lfoA.connect(g2.gain);
+    lfo.start();
+    var wind = audioCtx.createBufferSource(); wind.buffer = noiseBuf; wind.loop = true;
+    var wbp = audioCtx.createBiquadFilter(); wbp.type = 'bandpass'; wbp.frequency.value = 520; wbp.Q.value = 0.8;
+    var g3 = audioCtx.createGain(); g3.gain.value = 0.1;
+    wind.connect(wbp); wbp.connect(g3); g3.connect(wavesGain);
+    wind.start();
+    var lfo2 = audioCtx.createOscillator(); lfo2.frequency.value = 0.05;
+    var lfo2G = audioCtx.createGain(); lfo2G.gain.value = 180;
+    lfo2.connect(lfo2G); lfo2G.connect(wbp.frequency);
+    lfo2.start();
+  }
+
+  /* per-frame audio ↔ journey sync */
+  function audioSync(T) {
+    sceneIx = clamp(Math.floor(T + 0.0001), 0, 5);
+    if (!audioCtx || !AE.on) return;
+    liftPending = sceneIx >= 5;
+    var ro = T > 5.82;
+    if (ro !== runout) {
+      runout = ro;
+      if (runout) {
+        vTapeOut();
+        buildWaves();
+        wavesGain.gain.setTargetAtTime(0.3, audioCtx.currentTime, 0.9);
+        hissGain.gain.setTargetAtTime(0.028, audioCtx.currentTime, 0.8);
+      } else {
+        if (wavesGain) wavesGain.gain.setTargetAtTime(0.0001, audioCtx.currentTime, 0.5);
+        hissGain.gain.setTargetAtTime(0.01, audioCtx.currentTime, 0.5);
+      }
+    }
+    var da = RM ? 0 : driftTent(T) * 0.1;
+    if (Math.abs(da - lastDriftA) > 0.008) {
+      lastDriftA = da;
+      driftGain.gain.setTargetAtTime(Math.max(0.0001, da), audioCtx.currentTime, 0.08);
+    }
+  }
+
+  function npUpdate() {
+    if (!npText) return;
+    var s = 'NOW PLAYING: ' + DRIVE.title + ' · SKYWAVE 99.9 SIDE B';
+    npText.textContent = s;
+    if (npTicker) npTicker.title = s; /* full string for the RM-clipped ticker */
+  }
+  function radioOn() {
+    if (radioTimer) return;
+    radioStep = 0;
+    radioNextT = audioCtx.currentTime + 0.06;
+    musicBus.gain.setTargetAtTime(0.5, audioCtx.currentTime, 0.12);
+    radioTimer = setInterval(schedule, 25);
+    npUpdate();
+  }
+  function radioOff() {
+    clearInterval(radioTimer); radioTimer = null;
+    if (musicBus) musicBus.gain.setTargetAtTime(0.0001, audioCtx.currentTime, 0.1);
+    if (hissGain) hissGain.gain.setTargetAtTime(0.0001, audioCtx.currentTime, 0.1);
+    if (wavesGain) wavesGain.gain.setTargetAtTime(0.0001, audioCtx.currentTime, 0.2);
+    setTimeout(function () {
+      if (!AE.on && audioCtx && audioCtx.state === 'running') { try { audioCtx.suspend(); } catch (e) {} }
+    }, 500);
+  }
+  function applyAudioUI(on) {
+    AE.on = on;
+    if (audioBtn) {
+      audioBtn.innerHTML = on ? '■ 99.9 On Air<span class="livedot"></span>' : 'FM 99.9 [Tune]';
+      audioBtn.classList.toggle('on', on);
+      audioBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      audioBtn.setAttribute('aria-label', (on ? 'Stop' : 'Play') + ' radio: Night Drive FM, Skywave 99.9');
+    }
+    if (npTicker) npTicker.hidden = !on;
+  }
+  /* Commit "on" only when the context is genuinely running (house rule:
+     resume() without real activation stays suspended silently). */
+  function setAudio(on, fromPrimer) {
+    if (!on) {
+      store.set('aci_audio', '0');
+      if (audioCtx) radioOff();
+      applyAudioUI(false);
+      runout = false;
+      return;
+    }
+    if (!audioCtx && !buildAudio()) return;
+    store.set('aci_audio', '1');
+    if (hissGain) hissGain.gain.setTargetAtTime(0.01, audioCtx.currentTime, 0.1);
+    var settle = function () {
+      if (audioCtx.state === 'running') {
+        radioOn(); applyAudioUI(true);
+        audioSync(curT); /* re-derive runout before the first scheduler tick */
+        if (fromPrimer) {
+          autoOnAt = performance.now();
+          if (audioBtn && !RM) {
+            audioBtn.classList.add('pulse');
+            setTimeout(function () { audioBtn.classList.remove('pulse'); }, 1600);
+          }
+        }
+        return true;
+      }
+      return false;
+    };
+    var p = audioCtx.resume();
+    if (settle()) return;
+    if (p && p.then) p.then(settle).catch(function () {});
+  }
+  if (audioBtn) audioBtn.addEventListener('click', function () {
+    if (AE.on && autoOnAt >= 0 && performance.now() - autoOnAt < 400) { audioWanted = true; return; }
+    audioWanted = !AE.on;
+    setAudio(audioWanted);
+  });
+
+  /* Scroll arms the radio; the first activation-bearing event starts it.
+     (Scroll gestures carry no user activation — house pattern, Side A.) */
+  var audioWanted = store.get('aci_audio') !== '0';
+  var SCROLL_KEYS = { 'ArrowDown': 1, 'PageDown': 1, 'End': 1, ' ': 1, 'Spacebar': 1 };
+  var PRIME_EVENTS = ['wheel', 'scroll', 'keydown', 'touchmove', 'touchend', 'pointerdown'];
+  var scrolledDown = false;
+  var primeStartY = 0, prevTouchY = null;
+  function teardownPrimers() {
+    PRIME_EVENTS.forEach(function (t) { removeEventListener(t, onAudioPrime, true); });
+  }
+  function onAudioPrime(e) {
+    if (!audioWanted) { teardownPrimers(); return; }
+    var t = e.type;
+    if (audioBtn && e.target && audioBtn.contains && audioBtn.contains(e.target)) return;
+    if (t === 'wheel') { if (e.deltaY > 0) scrolledDown = true; }
+    else if (t === 'scroll') { if (scrollY > primeStartY + 4) scrolledDown = true; }
+    else if (t === 'keydown') {
+      if (e.target && e.target.closest && e.target.closest('button, a, input, textarea, select, [role="button"], [tabindex]')) return;
+      if (SCROLL_KEYS[e.key]) scrolledDown = true;
+    }
+    else if (t === 'touchmove') {
+      var y = e.touches && e.touches[0] ? e.touches[0].clientY : null;
+      if (y !== null) {
+        if (prevTouchY !== null && y < prevTouchY - 2) scrolledDown = true;
+        prevTouchY = y;
+      }
+    }
+    if (scrolledDown && !AE.on) setAudio(true, true);
+    if (AE.on) teardownPrimers();
+  }
+  if (audioWanted) {
+    primeStartY = scrollY;
+    PRIME_EVENTS.forEach(function (t) {
+      addEventListener(t, onAudioPrime, { passive: true, capture: true });
+    });
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (!audioCtx) return;
+    if (document.hidden) audioCtx.suspend();
+    else if (AE.on) {
+      audioCtx.resume();
+      radioNextT = Math.max(radioNextT, audioCtx.currentTime + 0.05);
+    }
+  });
+
+  /* Debug/tuning hook, same spirit as Side A's __aciSkipTrack */
+  window.__ndState = function () {
+    return {
+      ctx: audioCtx ? audioCtx.state : 'none',
+      on: AE.on, T: +curT.toFixed(3), target: +targetT.toFixed(3),
+      scene: sceneIx, lift: lift, runout: runout, rm: RM
+    };
+  };
+
+  /* ---------- SFX ---------- */
+  /* SFX gate on a live clock: taps during an iOS interruption must be
+     dropped, not queued at the frozen currentTime to burst on resume. */
+  AE.blip = function () {
+    if (!audioCtx || !AE.on || audioCtx.state !== 'running') return;
+    noiseVoice(audioCtx.currentTime, 0.08, 'bandpass', 1400, 0.8, 0.25, sfxBus);
+  };
+  AE.horn = function () {
+    if (!audioCtx || !AE.on || audioCtx.state !== 'running') return;
+    var t = audioCtx.currentTime;
+    [[t, 0.12, ['A4', 'E5']], [t + 0.18, 0.28, ['C5', 'G5']]].forEach(function (n) {
+      n[2].forEach(function (note) {
+        var o = audioCtx.createOscillator(); o.type = 'square'; o.frequency.value = freq(note);
+        var bp = audioCtx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1200; bp.Q.value = 1;
+        var g = audioCtx.createGain();
+        g.gain.setValueAtTime(0.0001, n[0]);
+        g.gain.linearRampToValueAtTime(0.35, n[0] + 0.005);
+        g.gain.setValueAtTime(0.35, n[0] + n[1]);
+        g.gain.exponentialRampToValueAtTime(0.001, n[0] + n[1] + 0.08);
+        o.connect(bp); bp.connect(g); g.connect(sfxBus);
+        o.start(n[0]); o.stop(n[0] + n[1] + 0.1);
+      });
+    });
+  };
+  AE.rev = function () {
+    if (!audioCtx || !AE.on || audioCtx.state !== 'running') return;
+    var t = audioCtx.currentTime;
+    var o = audioCtx.createOscillator(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(70, t);
+    o.frequency.exponentialRampToValueAtTime(330, t + 0.8);
+    o.frequency.exponentialRampToValueAtTime(120, t + 1.5);
+    var bp = audioCtx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 2;
+    bp.frequency.setValueAtTime(300, t);
+    bp.frequency.exponentialRampToValueAtTime(1400, t + 0.8);
+    var g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.3, t + 0.06);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 1.6);
+    o.connect(bp); bp.connect(g); g.connect(sfxBus);
+    o.start(t); o.stop(t + 1.7);
+    noiseVoice(t, 0.5, 'bandpass', 900, 1.2, 0.12, sfxBus);
+  };
+
+  /* ---------- FX toggle ---------- */
+  var fxBtn = $('#fxBtn');
+  function applyFxUI() {
+    if (!fxBtn) return;
+    fxBtn.textContent = RM ? 'FX [Off]' : 'FX [On]';
+    fxBtn.setAttribute('aria-pressed', RM ? 'false' : 'true');
+  }
+  if (fxBtn) {
+    applyFxUI();
+    fxBtn.addEventListener('click', function () {
+      RM = !RM;
+      document.documentElement.classList.toggle('rm', RM);
+      store.set('aci_fx', RM ? '0' : '1');
+      applyFxUI();
+      lastStaticIx = -1; lastDrawnT = -9;
+      if (driftC) driftC.style.opacity = 0;
+      if (RM) {
+        /* stale inline motion residue would freeze the slideshow off-pose */
+        scenes.forEach(function (s) { s.style.removeProperty('--drift'); });
+        car.style.removeProperty('transform');
+      }
+    });
+  }
+  /* OS reduced-motion flipped mid-session: follow it unless the visitor made
+     an explicit FX choice this session (the session choice wins, Side A law). */
+  if (rmMq && rmMq.addEventListener) rmMq.addEventListener('change', function (e) {
+    if (store.get('aci_fx') !== null) return;
+    RM = e.matches;
+    document.documentElement.classList.toggle('rm', RM);
+    applyFxUI();
+    lastStaticIx = -1; lastDrawnT = -9;
+    if (driftC) driftC.style.opacity = 0;
+    if (RM) {
+      scenes.forEach(function (s) { s.style.removeProperty('--drift'); });
+      car.style.removeProperty('transform');
+    }
+  });
+
+  /* ---------- Cheat: same code, new reward — TURBO ---------- */
+  var KONAMI = ['arrowup', 'arrowup', 'arrowdown', 'arrowdown', 'arrowleft', 'arrowright', 'arrowleft', 'arrowright', 'b', 'a'];
+  var kbuf = [];
+  var osdflash = $('#osdflash');
+  function turbo() {
+    turboLeft = 4;
+    if (osdflash) {
+      osdflash.classList.add('on');
+      setTimeout(function () { osdflash.classList.remove('on'); }, 1700);
+    }
+    if (AE.rev) AE.rev();
+  }
+  document.addEventListener('keydown', function (e) {
+    kbuf.push((e.key || '').toLowerCase());
+    if (kbuf.length > KONAMI.length) kbuf.shift();
+    if (kbuf.join(',') === KONAMI.join(',')) { kbuf = []; turbo(); }
+  });
+  /* Touch alternative: triple-tap the speedo */
+  var speedo = $('#dashSpeed');
+  if (speedo) {
+    var taps = [];
+    speedo.addEventListener('pointerdown', function () {
+      var now = Date.now();
+      taps.push(now);
+      taps = taps.filter(function (t) { return now - t < 900; });
+      if (taps.length >= 3) { taps = []; turbo(); }
+    });
+  }
+
+  /* ---------- Ignition ---------- */
+  layout();
+  resizeCanvas();
+  /* Deep links: #trk04 (or ?trk=4) lands mid-track; #t=5.9 (or ?t=5.9)
+     lands at a journey time. Query forms exist because headless fragment
+     captures fire early — and they survive link unfurlers that strip hashes. */
+  (function hashJump() {
+    var ref = location.hash + ' ' + location.search;
+    /* capture-rig extras: &audio=1 tunes in without a gesture (only works
+       where the browser's autoplay policy allows it, i.e. test harnesses) */
+    if (/[#?&]audio=1/.test(ref)) setTimeout(function () { setAudio(true); }, 30);
+    var vm = /[#?&]vt=([0-9.]+)/.exec(ref);
+    if (vm && isFinite(parseFloat(vm[1]))) { vtForce = clamp(parseFloat(vm[1]), 0, 6); return; }
+    var m = /(?:^|[#?&])trk=?0?([1-6])(?:$|[^0-9])/.exec(ref);
+    var y = -1;
+    if (m) {
+      var b = bands[+m[1] - 1];
+      y = b.start + (b.end - b.start) * 0.55;
+    } else if ((m = /[#?&]t=([0-9.]+)/.exec(ref))) {
+      /* '#t=.' parses to NaN, which clamp passes through — a malformed
+         shared link must load the top of the tape, not throw mid-ignition */
+      var T = clamp(parseFloat(m[1]), 0, 6);
+      if (isFinite(T)) {
+        var i = clamp(Math.floor(T), 0, 5);
+        var b2 = bands[i];
+        y = b2.start + clamp(T - i, 0, 1) * (b2.end - b2.start);
+      }
+    }
+    if (y >= 0) {
+      /* html{scroll-behavior:smooth} animates even scrollTo — bypass it */
+      var se = document.documentElement.style;
+      se.scrollBehavior = 'auto';
+      scrollTo(0, y);
+      se.scrollBehavior = '';
+    }
+  })();
+  read();
+  curT = targetT;
+  requestAnimationFrame(function (t0) { lastNow = t0; requestAnimationFrame(frame); });
+  render(RM ? clamp(Math.floor(curT), 0, 5) + 0.5 : curT, 0);
+  choreo(curT);
+})();
+</script>
