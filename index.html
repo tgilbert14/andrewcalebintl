@@ -625,6 +625,13 @@ html.rm .hero-h1 .glitch::before, html.rm .hero-h1 .glitch::after { animation: n
   border: 1px solid rgba(0,242,255,.65);
 }
 .btn-ghost:hover { box-shadow: 0 0 22px rgba(0,242,255,.4); background: rgba(0,242,255,.08); }
+/* Side B door: pink so it reads as the other reel, same control grammar */
+.btn-flip {
+  color: var(--neon-pink);
+  background: rgba(11,0,26,.4);
+  border: 1px solid rgba(255,0,255,.65);
+}
+.btn-flip:hover { box-shadow: 0 0 22px rgba(255,0,255,.45); background: rgba(255,0,255,.08); }
 .btn-deploy {
   color: var(--void);
   background: var(--osd-amber);
@@ -1472,6 +1479,7 @@ try { if (sessionStorage.getItem('aci_boot')) document.getElementById('boot').st
     <div class="hero-ctas">
       <a class="btn btn-primary" href="#contact" data-ch="CH 06" data-name="TRANSMISSION">Make Contact</a>
       <a class="btn btn-ghost" href="#fleet" data-ch="CH 02" data-name="FLEET TRACKER">Track the Fleet</a>
+      <a class="btn btn-flip" href="drive/">&#9654; Side B: Night Drive</a>
     </div>
   </div>
   <div class="hero-cue" aria-hidden="true">&#9660; Cont. Play</div>

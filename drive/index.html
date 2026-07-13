@@ -683,14 +683,20 @@ html.rm .fx-osdflash.on { animation: none; }
       <line class="sl" x1="-24" y1="42" x2="-150" y2="42" stroke="#ffffff" stroke-width="2"/>
       <line class="sl" x1="-10" y1="62" x2="-170" y2="62" stroke="#ffffff" stroke-width="2"/>
       <line class="sl" x1="-30" y1="86" x2="-140" y2="86" stroke="#ffffff" stroke-width="2"/>
-      <path d="M12 50 L52 46 L52 51 L16 55 Z" fill="#f4f4ff"/>
+      <path d="M12 50 L52 46 L52 51 L16 55 Z" fill="#d92525"/>
       <line x1="12" y1="55" x2="52" y2="51" stroke="#ff00ff" stroke-width="1.5"/>
-      <rect x="20" y="53" width="4" height="9" fill="#f4f4ff"/>
-      <rect x="40" y="50" width="4" height="10" fill="#f4f4ff"/>
-      <path d="M14 88 L20 60 Q22 55 30 54 L96 47 L128 36 Q133 33 140 33 L216 33 L292 44 L348 64 Q358 68 359 78 L359 88 Q359 93 352 93 L22 93 Q14 93 14 88 Z" fill="#f4f4ff"/>
+      <rect x="20" y="53" width="4" height="9" fill="#8f1111"/>
+      <rect x="40" y="50" width="4" height="10" fill="#8f1111"/>
+      <path d="M14 88 L20 60 Q22 55 30 54 L96 47 L128 36 Q133 33 140 33 L216 33 L292 44 L348 64 Q358 68 359 78 L359 88 Q359 93 352 93 L22 93 Q14 93 14 88 Z" fill="#d92525"/>
+      <path d="M30 54 L96 47 L128 36 Q133 33 140 33 L216 33 L292 44" fill="none" stroke="#ff2975" stroke-width="1.6" opacity=".85"/>
       <path d="M104 50 L130 39 L206 39 L206 50 Z" fill="#0b001a" stroke="#00f2ff" stroke-width="1"/>
+      <!-- the F40 wing, tail-side -->
+      <path d="M20 57 L30 55 L32 36 L22 36 Z" fill="#b31b1b"/>
+      <rect x="6" y="29" width="62" height="8" rx="2" fill="#c22020"/>
+      <line x1="8" y1="30.5" x2="66" y2="30.5" stroke="#ff2975" stroke-width="1.5"/>
+      <line x1="8" y1="36" x2="66" y2="36" stroke="#6e0d0d" stroke-width="1.6"/>
       <rect x="18" y="78" width="338" height="6" rx="2" fill="url(#gRefl)" opacity=".7"/>
-      <rect x="324" y="52" width="22" height="9" rx="2" fill="#f4f4ff" stroke="#b8c0d4" stroke-width="1"/>
+      <rect x="324" y="52" width="22" height="9" rx="2" fill="#d92525" stroke="#8f1111" stroke-width="1"/>
       <circle cx="341" cy="56.5" r="3.2" fill="#ffcc00"/>
       <rect x="10" y="62" width="12" height="20" rx="3" fill="rgba(255,43,43,.35)"/>
       <rect x="13" y="64" width="7" height="16" rx="2" fill="#ff2b2b"/>
@@ -716,10 +722,10 @@ html.rm .fx-osdflash.on { animation: none; }
     <div id="carHit"></div>
   </div>
 
-  <!-- Rear view: the same car, seen from behind on the grid.
-       Stacked bands per the Gandini discipline: bumper, louvred tail bar,
-       tapering deck, narrow raked greenhouse, wide rear tires, one high
-       mirror. Near-black body, pink rim-light, red tail glow. -->
+  <!-- Rear view: the F40 shot from the Summer 1985 reference — red wedge,
+       full-width wing on end plates, louvred engine hatch, four round tail
+       lamps in a black mesh panel, triple center exhaust, glowing rims.
+       Backlit by the sun: pink rim-light on every top edge. -->
   <div id="carRear">
     <svg viewBox="0 0 300 175" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -727,41 +733,83 @@ html.rm .fx-osdflash.on { animation: none; }
           <stop offset="0%" stop-color="#00f2ff" stop-opacity=".5"/>
           <stop offset="100%" stop-color="#00f2ff" stop-opacity="0"/>
         </radialGradient>
-        <linearGradient id="gTail" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stop-color="#ff2b2b" stop-opacity=".95"/>
-          <stop offset="18%" stop-color="#ff2b2b" stop-opacity=".55"/>
-          <stop offset="50%" stop-color="#ff2b2b" stop-opacity=".4"/>
-          <stop offset="82%" stop-color="#ff2b2b" stop-opacity=".55"/>
-          <stop offset="100%" stop-color="#ff2b2b" stop-opacity=".95"/>
-        </linearGradient>
+        <radialGradient id="gLamp" cx="50%" cy="42%" r="60%">
+          <stop offset="0%" stop-color="#ff6a4a"/>
+          <stop offset="45%" stop-color="#e01818"/>
+          <stop offset="100%" stop-color="#8f0d0d"/>
+        </radialGradient>
       </defs>
       <ellipse cx="150" cy="164" rx="132" ry="7" fill="rgba(0,0,0,.55)"/>
       <ellipse class="car-underglow" cx="150" cy="160" rx="118" ry="7" fill="url(#gUg2)"/>
-      <rect x="6" y="118" width="52" height="44" rx="9" fill="#05000e"/>
-      <rect x="242" y="118" width="52" height="44" rx="9" fill="#05000e"/>
-      <rect x="18" y="126" width="264" height="32" rx="7" fill="#0c0c1e"/>
-      <line x1="24" y1="127" x2="276" y2="127" stroke="#ff2975" stroke-width="1.4" opacity=".8"/>
-      <rect x="22" y="94" width="256" height="36" rx="5" fill="#05000e"/>
-      <g>
-        <line x1="30" y1="102" x2="270" y2="102" stroke="url(#gTail)" stroke-width="6" opacity=".28"/>
-        <line x1="30" y1="102" x2="270" y2="102" stroke="url(#gTail)" stroke-width="2.4"/>
-        <line x1="30" y1="110" x2="270" y2="110" stroke="url(#gTail)" stroke-width="6" opacity=".28"/>
-        <line x1="30" y1="110" x2="270" y2="110" stroke="url(#gTail)" stroke-width="2.4"/>
-        <line x1="30" y1="118" x2="270" y2="118" stroke="url(#gTail)" stroke-width="6" opacity=".28"/>
-        <line x1="30" y1="118" x2="270" y2="118" stroke="url(#gTail)" stroke-width="2.4"/>
+      <!-- rear tires + glowing rims -->
+      <rect x="4" y="114" width="56" height="48" rx="10" fill="#05000e"/>
+      <rect x="240" y="114" width="56" height="48" rx="10" fill="#05000e"/>
+      <circle cx="30" cy="150" r="11" fill="#0a0a18" stroke="rgba(4,217,255,.55)" stroke-width="2"/>
+      <circle cx="270" cy="150" r="11" fill="#0a0a18" stroke="rgba(4,217,255,.55)" stroke-width="2"/>
+      <circle cx="30" cy="150" r="4" fill="#123" stroke="rgba(4,217,255,.35)" stroke-width="1.5"/>
+      <circle cx="270" cy="150" r="4" fill="#123" stroke="rgba(4,217,255,.35)" stroke-width="1.5"/>
+      <!-- fender cheeks + side vents -->
+      <path d="M24 126 L14 100 Q13 92 24 88 L28 88 L28 126 Z" fill="#b31b1b"/>
+      <path d="M276 126 L286 100 Q287 92 276 88 L272 88 L272 126 Z" fill="#b31b1b"/>
+      <g stroke="#5c0c0c" stroke-width="2">
+        <line x1="19" y1="104" x2="19" y2="118"/><line x1="23" y1="102" x2="23" y2="120"/>
+        <line x1="281" y1="104" x2="281" y2="118"/><line x1="277" y1="102" x2="277" y2="120"/>
       </g>
-      <rect x="130" y="100" width="40" height="20" rx="2" fill="#1a0b2e" stroke="rgba(255,204,0,.7)" stroke-width="1"/>
-      <text x="150" y="115" text-anchor="middle" font-family="'VT323','Courier New',monospace" font-size="13" fill="#ffcc00" letter-spacing="1">ACI-86</text>
-      <path d="M40 94 L62 74 L238 74 L260 94 Z" fill="#0c0c1e"/>
-      <line x1="62" y1="74" x2="238" y2="74" stroke="#ff2975" stroke-width="1.6" opacity=".9"/>
-      <path d="M94 74 L114 42 L186 42 L206 74 Z" fill="#08001a"/>
-      <path d="M102 70 L119 49 L181 49 L198 70 Z" fill="#120230" stroke="rgba(0,242,255,.55)" stroke-width="1"/>
-      <line x1="114" y1="42" x2="186" y2="42" stroke="#ff2975" stroke-width="1.6"/>
-      <line x1="106" y1="52" x2="90" y2="40" stroke="#0c0c1e" stroke-width="3"/>
-      <ellipse cx="87" cy="38" rx="8" ry="5.5" fill="#0c0c1e"/>
-      <path d="M80 35 Q87 32 94 35" stroke="#ff2975" stroke-width="1.2" fill="none" opacity=".8"/>
-      <circle cx="58" cy="152" r="4" fill="#1c1c2e" stroke="#3a3a52" stroke-width="1.5"/>
-      <circle cx="242" cy="152" r="4" fill="#1c1c2e" stroke="#3a3a52" stroke-width="1.5"/>
+      <!-- valance + diffuser + triple exhaust -->
+      <rect x="22" y="140" width="256" height="18" rx="4" fill="#6e0d0d"/>
+      <circle cx="136" cy="149" r="5.5" fill="#0c0c14" stroke="#3a3a48" stroke-width="1.6"/>
+      <circle cx="150" cy="149" r="5.5" fill="#0c0c14" stroke="#3a3a48" stroke-width="1.6"/>
+      <circle cx="164" cy="149" r="5.5" fill="#0c0c14" stroke="#3a3a48" stroke-width="1.6"/>
+      <!-- bumper band -->
+      <rect x="18" y="124" width="264" height="20" rx="5" fill="#b31b1b"/>
+      <line x1="24" y1="125" x2="276" y2="125" stroke="#ff2975" stroke-width="1.4" opacity=".85"/>
+      <!-- tail panel: black mesh, four round lamps, the plate -->
+      <rect x="24" y="86" width="252" height="40" rx="5" fill="#0a0a10"/>
+      <g stroke="#1c1c26" stroke-width="1">
+        <line x1="28" y1="94" x2="272" y2="94"/><line x1="28" y1="101" x2="272" y2="101"/>
+        <line x1="28" y1="108" x2="272" y2="108"/><line x1="28" y1="115" x2="272" y2="115"/>
+      </g>
+      <g>
+        <circle cx="50" cy="106" r="14" fill="rgba(255,43,43,.28)"/>
+        <circle cx="80" cy="106" r="14" fill="rgba(255,43,43,.28)"/>
+        <circle cx="220" cy="106" r="14" fill="rgba(255,43,43,.28)"/>
+        <circle cx="250" cy="106" r="14" fill="rgba(255,43,43,.28)"/>
+        <circle cx="50" cy="106" r="10" fill="url(#gLamp)"/>
+        <circle cx="80" cy="106" r="10" fill="url(#gLamp)"/>
+        <circle cx="220" cy="106" r="10" fill="url(#gLamp)"/>
+        <circle cx="250" cy="106" r="10" fill="url(#gLamp)"/>
+        <circle cx="50" cy="106" r="10" fill="none" stroke="#2a0a0a" stroke-width="1.6"/>
+        <circle cx="80" cy="106" r="10" fill="none" stroke="#2a0a0a" stroke-width="1.6"/>
+        <circle cx="220" cy="106" r="10" fill="none" stroke="#2a0a0a" stroke-width="1.6"/>
+        <circle cx="250" cy="106" r="10" fill="none" stroke="#2a0a0a" stroke-width="1.6"/>
+      </g>
+      <rect x="131" y="96" width="38" height="18" rx="2" fill="#1a0b2e" stroke="rgba(255,204,0,.7)" stroke-width="1"/>
+      <text x="150" y="110" text-anchor="middle" font-family="'VT323','Courier New',monospace" font-size="12" fill="#ffcc00" letter-spacing="1">ACI-86</text>
+      <!-- deck shoulders -->
+      <path d="M28 86 L52 64 L248 64 L272 86 Z" fill="#a01515"/>
+      <line x1="52" y1="64" x2="248" y2="64" stroke="#ff2975" stroke-width="1.5" opacity=".9"/>
+      <!-- louvred engine hatch -->
+      <path d="M66 84 L88 50 L212 50 L234 84 Z" fill="#1b0710"/>
+      <g stroke="#05000e" stroke-width="3">
+        <line x1="82" y1="58" x2="218" y2="58"/>
+        <line x1="78" y1="65" x2="222" y2="65"/>
+        <line x1="74" y1="72" x2="226" y2="72"/>
+        <line x1="70" y1="79" x2="230" y2="79"/>
+      </g>
+      <!-- cabin roof, visible above the wing -->
+      <path d="M108 42 L122 31 L178 31 L192 42 L108 42 Z" fill="#7c1010"/>
+      <line x1="122" y1="31" x2="178" y2="31" stroke="#ff2975" stroke-width="1.4"/>
+      <!-- door mirrors -->
+      <line x1="72" y1="56" x2="58" y2="48" stroke="#7c1010" stroke-width="3"/>
+      <ellipse cx="54" cy="46" rx="7" ry="5" fill="#8f1111"/>
+      <line x1="228" y1="56" x2="242" y2="48" stroke="#7c1010" stroke-width="3"/>
+      <ellipse cx="246" cy="46" rx="7" ry="5" fill="#8f1111"/>
+      <!-- THE WING: end plates + full-width blade -->
+      <path d="M34 88 L48 88 L48 38 L34 44 Z" fill="#b31b1b"/>
+      <path d="M266 88 L252 88 L252 38 L266 44 Z" fill="#b31b1b"/>
+      <rect x="28" y="32" width="244" height="11" rx="3" fill="#c22020"/>
+      <line x1="32" y1="33.5" x2="268" y2="33.5" stroke="#ff2975" stroke-width="1.8"/>
+      <line x1="32" y1="42" x2="268" y2="42" stroke="#6e0d0d" stroke-width="2"/>
     </svg>
   </div>
 </div>
