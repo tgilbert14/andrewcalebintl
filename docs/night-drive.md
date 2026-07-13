@@ -40,6 +40,13 @@ deploy).
   scheduled duck on a `pumpBus` (WebAudio has no sidechain input); the gated
   snare is a shared convolver with a generated decaying-noise IR and a hard
   130 ms gate.
+- **The music starts on scroll** — as close to it as browsers allow. Touch
+  scrolling starts it on the swipe itself (touchend carries activation). For
+  wheel scrolling (which carries none), any earlier tap or keypress silently
+  pre-unlocks the context so the scroll alone starts the record; a wheel-only
+  visitor who has never touched the page gets a blinking FM chip until their
+  first tap anywhere. Side B keeps its own dial (`acib_audio`): turning the
+  radio off on Side A doesn't silence the drive.
 - **Reduced motion** is dual-path, per house law: the `@media` block and
   `html.rm` both kill every animation, and the canvas renders one static
   postcard per scene (repainting whenever the canvas was cleared —

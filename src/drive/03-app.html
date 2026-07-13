@@ -181,6 +181,25 @@
     for (x = 0; x <= 12; x++) { ridgeR.push([0.56 + x / 12 * 0.44, (x % 2 ? 0.055 : 0.02) + r() * 0.07]); }
   })();
 
+  /* Finale skyline: the neon city on the horizon right of the sun (the
+     Summer 1985 frame). Norm-space so it survives resizes untouched. */
+  var FCITY = [];
+  (function seedFinaleCity() {
+    var r = mulberry(1959);
+    var x = 0.545;
+    while (x < 0.965) {
+      var w = 0.016 + r() * 0.028;
+      var h = 0.045 + r() * 0.115;
+      var b = { x: x, w: w, h: h, ant: r() < 0.22, neon: r() < 0.34 ? (r() < 0.5 ? 'rgba(0,242,255,.6)' : 'rgba(255,64,255,.55)') : null, win: [] };
+      var n = Math.round(4 + h * 90);
+      for (var k = 0; k < n; k++) {
+        b.win.push({ dx: r(), dy: r(), sp: 0.3 + r() * 1.1, ph: r() * 6.28, c: r() < 0.5 ? 'rgba(255,204,0,.8)' : (r() < 0.75 ? 'rgba(0,242,255,.75)' : 'rgba(255,246,201,.85)') });
+      }
+      FCITY.push(b);
+      x += w + 0.004 + r() * 0.014;
+    }
+  })();
+
   /* Building strips (far + mid) and their periods, in world px */
   var FAR = [], MID = [], FAR_P = 0, MID_P = 0;
   (function seedCity() {
@@ -403,6 +422,39 @@
         ctx.strokeStyle = 'rgba(148,0,211,.28)'; ctx.lineWidth = 5; ctx.stroke();
         ctx.strokeStyle = '#9400D3'; ctx.lineWidth = 1.6; ctx.stroke();
       });
+      ctx.globalAlpha = 1;
+    }
+
+    /* FINALE SKYLINE — silhouetted against the sun glow, windows lit */
+    var aFC = env(T, 4.2, 4.75, 6, 6.01);
+    if (aFC > 0.01) {
+      ctx.globalAlpha = aFC;
+      for (i = 0; i < FCITY.length; i++) {
+        var fb = FCITY[i];
+        var bx = fb.x * W, bw = Math.max(6, fb.w * W), bh = fb.h * H;
+        ctx.fillStyle = '#0c0c1e';
+        ctx.fillRect(bx, hor - bh, bw, bh + 1);
+        ctx.fillStyle = 'rgba(255,41,117,.7)';
+        ctx.fillRect(bx, hor - bh, bw, 1.5);
+        if (fb.neon) {
+          ctx.fillStyle = fb.neon;
+          ctx.fillRect(bx, hor - bh, 1.5, bh);
+        }
+        if (fb.ant) {
+          ctx.fillStyle = '#0c0c1e';
+          ctx.fillRect(bx + bw / 2 - 1, hor - bh - 8, 2, 8);
+          ctx.fillStyle = 'rgba(255,43,43,.85)';
+          ctx.fillRect(bx + bw / 2 - 1.5, hor - bh - 11, 3, 3);
+        }
+        for (var wi = 0; wi < fb.win.length; wi++) {
+          var wn = fb.win[wi];
+          var twk = RM ? 0.7 : 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(time * wn.sp + wn.ph));
+          ctx.globalAlpha = aFC * twk;
+          ctx.fillStyle = wn.c;
+          ctx.fillRect(bx + 2 + wn.dx * (bw - 5), hor - bh + 4 + wn.dy * (bh - 10), 2, 3);
+        }
+        ctx.globalAlpha = aFC;
+      }
       ctx.globalAlpha = 1;
     }
 
@@ -1200,6 +1252,7 @@
     if (audioBtn) {
       audioBtn.innerHTML = on ? '■ 99.9 On Air<span class="livedot"></span>' : 'FM 99.9 [Tune]';
       audioBtn.classList.toggle('on', on);
+      if (on) audioBtn.classList.remove('armed');
       audioBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
       audioBtn.setAttribute('aria-label', (on ? 'Stop' : 'Play') + ' radio: Night Drive FM, Skywave 99.9');
     }
@@ -1209,14 +1262,16 @@
      resume() without real activation stays suspended silently). */
   function setAudio(on, fromPrimer) {
     if (!on) {
-      store.set('aci_audio', '0');
+      /* Side B keeps its own dial: turning the radio off on Side A must not
+         silence the drive — only an off made here is remembered here. */
+      store.set('acib_audio', '0');
       if (audioCtx) radioOff();
       applyAudioUI(false);
       runout = false;
       return;
     }
     if (!audioCtx && !buildAudio()) return;
-    store.set('aci_audio', '1');
+    store.set('acib_audio', '1');
     if (hissGain) hissGain.gain.setTargetAtTime(0.01, audioCtx.currentTime, 0.1);
     var settle = function () {
       if (audioCtx.state === 'running') {
@@ -1245,18 +1300,29 @@
 
   /* Scroll arms the radio; the first activation-bearing event starts it.
      (Scroll gestures carry no user activation — house pattern, Side A.) */
-  var audioWanted = store.get('aci_audio') !== '0';
+  var audioWanted = store.get('acib_audio') !== '0';
   var SCROLL_KEYS = { 'ArrowDown': 1, 'PageDown': 1, 'End': 1, ' ': 1, 'Spacebar': 1 };
   var PRIME_EVENTS = ['wheel', 'scroll', 'keydown', 'touchmove', 'touchend', 'pointerdown'];
   var scrolledDown = false;
   var primeStartY = 0, prevTouchY = null;
   function teardownPrimers() {
     PRIME_EVENTS.forEach(function (t) { removeEventListener(t, onAudioPrime, true); });
+    if (audioBtn) audioBtn.classList.remove('armed');
   }
   function onAudioPrime(e) {
     if (!audioWanted) { teardownPrimers(); return; }
     var t = e.type;
     if (audioBtn && e.target && audioBtn.contains && audioBtn.contains(e.target)) return;
+    /* Activation-bearing gestures silently pre-unlock the context — even
+       before any scroll — so a later wheel scroll (which browsers grant no
+       activation of its own) can start the music by itself. The hiss floor
+       stays muted until the radio actually commits. */
+    if (!AE.on && (t === 'pointerdown' || t === 'keydown' || t === 'touchend')) {
+      if (audioCtx || buildAudio()) {
+        if (hissGain) hissGain.gain.value = 0.0001;
+        try { audioCtx.resume(); } catch (e2) {}
+      }
+    }
     if (t === 'wheel') { if (e.deltaY > 0) scrolledDown = true; }
     else if (t === 'scroll') { if (scrollY > primeStartY + 4) scrolledDown = true; }
     else if (t === 'keydown') {
@@ -1271,6 +1337,9 @@
       }
     }
     if (scrolledDown && !AE.on) setAudio(true, true);
+    /* Still locked after a wheel-only scroll: blink the chip so the one
+       tap it takes has a visible target (any tap anywhere also works). */
+    if (audioBtn) audioBtn.classList.toggle('armed', audioWanted && scrolledDown && !AE.on);
     if (AE.on) teardownPrimers();
   }
   if (audioWanted) {
