@@ -1,10 +1,11 @@
 # Night Drive — Side B (`/drive/`)
 
-Side B of the master tape: one continuous scroll-driven drive that ends with the
-car going into the sun. Everything is procedural — no video, no images, no
-external requests. Sources live in `src/drive/`, and `node build.js` emits
-`drive/index.html` alongside the main page (same fonts, same commit-and-push
-deploy).
+Side B of the master tape: one continuous scroll-driven mission called **The
+Long Way West**. A late-night call becomes a deadline, a signal on the coast,
+an off-map turn, and the ACI promise at first light: **Go Anywhere. Meet
+Anyone.** Everything is procedural — no video, no images, no external
+requests. Sources live in `src/drive/`, and `node build.js` emits
+`drive/index.html` alongside the main page.
 
 ## How it works
 
@@ -14,6 +15,10 @@ deploy).
   Scroll maps to a journey time `T ∈ [0,6]`, lerped each frame
   (dt-normalized `1-0.82^(dt·60)`) so flicks feel like inertia. Scroll is never
   hijacked — native scrollbar, keyboard, and anchors all work.
+- **The six tracks form one story.** The Call → The City → The Deadline → The
+  Signal → Off-Map → First Light. Time, distance, route status, and the tape
+  counter advance together in the HUD; the final whiteout clears the chrome so
+  the contact card becomes the last frame.
 - **The world is one fixed canvas** rendered from `T` + wall-clock: sky ramps
   interpolate between per-scene keyframes; buildings/palms are pre-rendered
   offscreen sprites (shadowBlur only at build time, never in the frame loop);

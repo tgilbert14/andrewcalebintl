@@ -15,17 +15,21 @@
 <!-- HUD (decorative tape chrome; live controls live on the dash) -->
 <div class="hud" aria-hidden="true">
   <div class="tl osd"><span class="playglyph"></span>PLAY&nbsp;&nbsp;<span id="hudTrk">TRK 01</span> &middot; SIDE B</div>
-  <div class="tr osd">SP &middot; <span id="hudCounter">0:00:00</span></div>
+  <div class="tc osd">
+    <span class="route-name" id="routeStatus">WESTBOUND / THE CALL</span>
+    <span class="route-progress"><i id="routeFill"></i></span>
+  </div>
+  <div class="tr osd">SP &middot; <span id="hudCounter">0:00:00</span><br><span id="hudTime">21:47</span> LOCAL</div>
 </div>
 
 <!-- ROUTE RAIL: the tracklist -->
 <nav class="rail" aria-label="Tracklist">
-  <a href="#trk01" data-i="0" style="--acc:#ffcc00" class="active" aria-current="true"><span class="lbl">TRK 01 &middot; Ignition</span></a>
+  <a href="#trk01" data-i="0" style="--acc:#ffcc00" class="active" aria-current="true"><span class="lbl">TRK 01 &middot; The Call</span></a>
   <a href="#trk02" data-i="1" style="--acc:#00f2ff"><span class="lbl">TRK 02 &middot; The City</span></a>
-  <a href="#trk03" data-i="2" style="--acc:#ff6a00"><span class="lbl">TRK 03 &middot; The Expressway</span></a>
-  <a href="#trk04" data-i="3" style="--acc:#b026ff"><span class="lbl">TRK 04 &middot; The Coast</span></a>
-  <a href="#trk05" data-i="4" style="--acc:#ff00ff"><span class="lbl">TRK 05 &middot; The Grid</span></a>
-  <a href="#trk06" data-i="5" style="--acc:#ffd91f"><span class="lbl">TRK 06 &middot; Into the Sun</span></a>
+  <a href="#trk03" data-i="2" style="--acc:#ff6a00"><span class="lbl">TRK 03 &middot; The Deadline</span></a>
+  <a href="#trk04" data-i="3" style="--acc:#b026ff"><span class="lbl">TRK 04 &middot; The Signal</span></a>
+  <a href="#trk05" data-i="4" style="--acc:#ff00ff"><span class="lbl">TRK 05 &middot; Off-Map</span></a>
+  <a href="#trk06" data-i="5" style="--acc:#ffd91f"><span class="lbl">TRK 06 &middot; First Light</span></a>
 </nav>
 
 <!-- THE CAR: side view rides TRK 01–05, rear view owns the finale -->
@@ -190,54 +194,67 @@
 <main id="main">
 <div id="track">
 
-<!-- ============ TRK 01 : IGNITION ============ -->
-<section class="scene" id="trk01" data-trk="TRK 01" data-name="IGNITION" style="--acc:#ffcc00">
-  <p class="eyebrow">Skywave 99.9 Presents</p>
+<!-- ============ TRK 01 : THE CALL ============ -->
+<section class="scene scene-intro" id="trk01" data-trk="TRK 01" data-name="THE CALL" data-index="01" style="--acc:#ffcc00">
+  <div class="route-meta"><span>21:47 LOCAL</span><span>34.0522&deg; N</span><span>PRIORITY</span></div>
+  <p class="eyebrow">Andrew Caleb International Presents</p>
   <h1 class="h1"><span class="chrome-text">NIGHT DRIVE</span></h1>
-  <p class="script">Side B</p>
-  <p class="tagline">Scroll to Drive</p>
-  <p>The office closes at dusk. The coast opens at eight. This is the part of the job that never made the brochure.</p>
-  <p class="cue" aria-hidden="true">&#9660; Shift Into Drive</p>
+  <p class="script">The Long Way West</p>
+  <div class="brief-card">
+    <span>INCOMING // UNKNOWN ORIGIN</span>
+    <strong>WEST. BEFORE SUNRISE.</strong>
+    <small>No address. No introduction. Just a signal leaving town.</small>
+  </div>
+  <p class="cue" aria-hidden="true">&#9660; Scroll to shift into drive</p>
 </section>
 
 <!-- ============ TRK 02 : THE CITY ============ -->
-<section class="scene" id="trk02" data-trk="TRK 02" data-name="THE CITY" style="--acc:#00f2ff">
+<section class="scene scene-right" id="trk02" data-trk="TRK 02" data-name="THE CITY" data-index="02" style="--acc:#00f2ff">
+  <div class="route-meta"><span>22:13</span><span>11 MI WEST</span><span>NO RSVP</span></div>
   <span class="trk-tab">TRK 02 &middot; The City</span>
-  <h2>Every Window Is a Meeting.</h2>
-  <p>Downtown still glows with unfinished business. We pass all of it. Tonight's appointment is with the horizon.</p>
-  <div class="tags"><span>Downtown</span><span>42 Floors</span><span>Neon</span></div>
+  <h2>Every Window Is a Maybe.</h2>
+  <p>The city is a thousand closed doors pretending to be walls. We pass every one. Tonight's only appointment is moving west.</p>
+  <div class="tags"><span>0 Invitations</span><span>1 Direction</span><span>Due West</span></div>
 </section>
 
-<!-- ============ TRK 03 : THE EXPRESSWAY ============ -->
-<section class="scene" id="trk03" data-trk="TRK 03" data-name="THE EXPRESSWAY" style="--acc:#ff6a00">
-  <span class="trk-tab">TRK 03 &middot; The Expressway</span>
-  <h2>Eight Lanes, No Questions.</h2>
-  <p>The expressway doesn't ask where you're headed, and we extend it the same courtesy.</p>
-  <div class="tags"><span>Speed 88</span><span>Sodium Glow</span></div>
+<!-- ============ TRK 03 : THE DEADLINE ============ -->
+<section class="scene" id="trk03" data-trk="TRK 03" data-name="THE DEADLINE" data-index="03" style="--acc:#ff6a00">
+  <div class="route-meta"><span>00:08</span><span>61 MI WEST</span><span>T&minus;05:50</span></div>
+  <span class="trk-tab">TRK 03 &middot; The Deadline</span>
+  <h2>The Brief Gets Shorter at Speed.</h2>
+  <p>By midnight, names disappear. Then landmarks. Then reasons. All that's left is a time, a direction, and the nerve to keep going.</p>
+  <div class="road-sign" aria-hidden="true"><b>WEST</b><span>NEXT EXIT: UNKNOWN</span></div>
 </section>
 
-<!-- ============ TRK 04 : THE COAST ============ -->
-<section class="scene" id="trk04" data-trk="TRK 04" data-name="THE COAST" style="--acc:#b026ff">
-  <span class="trk-tab">TRK 04 &middot; The Coast</span>
-  <h2>The Ocean Keeps Our Hours.</h2>
-  <p>City in the mirror, moon on the water. Somewhere past the break is everyone we haven't met yet.</p>
-  <div class="tags"><span>Coast Hwy</span><span>Moonrise</span><span>Palms</span></div>
+<!-- ============ TRK 04 : THE SIGNAL ============ -->
+<section class="scene scene-right" id="trk04" data-trk="TRK 04" data-name="THE SIGNAL" data-index="04" style="--acc:#b026ff">
+  <div class="route-meta"><span>02:26</span><span>COAST HWY</span><span>CARRIER 99.9</span></div>
+  <span class="trk-tab">TRK 04 &middot; The Signal</span>
+  <h2>Then the Static Says Your Name.</h2>
+  <p>The city falls out of the mirror. The ocean takes its place. Somewhere between stations, the unknown voice comes back.</p>
+  <div class="signal-card">
+    <span class="signal-label">SIGNAL ACQUIRED // 02:26:14</span>
+    <span class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+    <strong>COME ALONE. FIRST LIGHT.</strong>
+  </div>
 </section>
 
-<!-- ============ TRK 05 : THE GRID ============ -->
-<section class="scene" id="trk05" data-trk="TRK 05" data-name="THE GRID" style="--acc:#ff00ff">
-  <span class="trk-tab">TRK 05 &middot; The Grid</span>
-  <h2>Past the Last Exit.</h2>
-  <p>Out here the map gives up and the signal takes over. Skywave comes in clearer than it has any right to.</p>
-  <div class="tags"><span>No Service</span><span>Full Signal</span></div>
+<!-- ============ TRK 05 : OFF-MAP ============ -->
+<section class="scene" id="trk05" data-trk="TRK 05" data-name="OFF-MAP" data-index="05" style="--acc:#ff00ff">
+  <div class="route-meta"><span>04:51</span><span>COORDINATES LOST</span><span>17 MI REMAIN</span></div>
+  <span class="trk-tab">TRK 05 &middot; Off-Map</span>
+  <h2>The Map Ends. The Network Begins.</h2>
+  <p>No road names. No bars. Full signal. Out here, the world stops being something you can search and becomes someone you have to know.</p>
+  <div class="tags"><span>No Service</span><span>Full Signal</span><span>Keep Going</span></div>
 </section>
 
-<!-- ============ TRK 06 : INTO THE SUN ============ -->
-<section class="scene center" id="trk06" data-trk="TRK 06" data-name="INTO THE SUN" style="--acc:#ffd91f">
-  <span class="trk-tab">TRK 06 &middot; Into the Sun</span>
-  <h2>Drive Until the Sun Takes You.</h2>
-  <p>Every tape runs out. The good ones run out on the chorus.</p>
-  <div class="tags"><span>Due West</span><span>End of Tape</span></div>
+<!-- ============ TRK 06 : FIRST LIGHT ============ -->
+<section class="scene center" id="trk06" data-trk="TRK 06" data-name="FIRST LIGHT" data-index="06" style="--acc:#ffd91f">
+  <div class="route-meta"><span>05:58</span><span>FIRST LIGHT</span><span>LINE OPEN</span></div>
+  <span class="trk-tab">TRK 06 &middot; First Light</span>
+  <h2>Go Anywhere.<br>Meet Anyone.</h2>
+  <p>The sun was never the destination. The person waiting on the other side was.</p>
+  <p class="payoff">The world gets smaller when you know who to call.</p>
 </section>
 
 </div>
@@ -245,22 +262,23 @@
 <!-- ============ END CARD (after the tape runs out) ============ -->
 <section class="endcard" id="end">
   <div class="tape-card">
-    <div class="strip"><span>Side B &middot; End of Tape</span><span>Recorded somewhere west of everything</span></div>
+    <div class="strip"><span>Mission 001 &middot; Signal Complete</span><span>Recorded somewhere west of everything</span></div>
     <div class="inner">
-      <h2>End of Side B</h2>
+      <p class="end-kicker">Andrew Caleb International</p>
+      <h2>The Line Is Open</h2>
       <div class="lines">
-        <p>You made it to the end of the tape. The sun has the car now; the Operator will want it back by morning.</p>
-        <p>Same time tomorrow. The coast isn't going anywhere.</p>
+        <p>Every serious thing starts the same way: someone goes first.</p>
+        <p>Tell us where you're trying to get&mdash;or who you're trying to meet.</p>
       </div>
       <div class="actions">
+        <a class="btn btn-primary" href="mailto:contactandrewcalebintl@gmail.com">&#9679; Open a Line</a>
         <button class="rewind" id="rewBtn">&#9664;&#9664; Rew &middot; Drive It Again</button>
-        <a class="btn btn-primary" href="../">&#9654; Play Side A</a>
-        <a class="btn btn-ghost" href="mailto:contactandrewcalebintl@gmail.com">&#9167; Eject &middot; Send Transmission</a>
+        <a class="btn btn-ghost" href="../">&#9654; Play Side A</a>
       </div>
     </div>
   </div>
-  <p class="micro">ACI Master Tape 001 &middot; Side B &middot; Stereo Hi-Fi &middot; Be Kind, Rewind</p>
-  <p class="legal">&copy; 2026 Andrew Caleb International. No cars were harmed. The sun gives it back every morning.</p>
+  <p class="micro">ACI Master Tape 001 &middot; Side B &middot; One Signal &middot; Six Tracks &middot; Due West</p>
+  <p class="legal">&copy; 2026 Andrew Caleb International. Go anywhere. Meet anyone.</p>
   <noscript><p class="legal">The drive itself needs JavaScript; the tape notes above read fine without it.</p></noscript>
 </section>
 </main>

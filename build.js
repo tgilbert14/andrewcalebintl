@@ -66,7 +66,7 @@ if (fs.existsSync(driveSrc('01-style.html'))) {
     console.error('ERROR: unreplaced placeholder remains in drive page');
     process.exit(1);
   }
-  const DDESC = 'Skywave 99.9 presents Night Drive. Side B of the ACI master tape: one coast, one signal, drive until the sun takes you.';
+  const DDESC = 'Night Drive: The Long Way West. One call, one deadline, and a signal moving toward first light. An interactive story by Andrew Caleb International.';
   const DFAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23120230'/%3E%3Cdefs%3E%3ClinearGradient id='s' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23ffd91f'/%3E%3Cstop offset='.55' stop-color='%23ff6a00'/%3E%3Cstop offset='1' stop-color='%23ff2d78'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='32' cy='34' r='20' fill='url(%23s)'/%3E%3Crect x='8' y='38' width='48' height='3' fill='%23120230'/%3E%3Crect x='8' y='45' width='48' height='4' fill='%23120230'/%3E%3Crect x='8' y='53' width='48' height='5' fill='%23120230'/%3E%3C/svg%3E";
   const driveBody = drive.replace(/^<title>.*?<\/title>\s*/, '');
   const driveWrapped = `<!doctype html>

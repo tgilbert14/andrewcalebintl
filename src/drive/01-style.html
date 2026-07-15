@@ -211,9 +211,28 @@ html.rm .car-underglow { animation: none; opacity: .5; }
    HUD — the dash. Top corners = tape chrome, bottom bar = dashboard.
    ============================================================ */
 .hud { position: fixed; inset: 0; z-index: 850; pointer-events: none; }
+.hud, .rail { transition: opacity .35s ease, visibility .35s ease; }
+html.at-end .hud, html.at-end .rail { opacity: 0; visibility: hidden; }
 .hud > div { position: fixed; }
 .hud .tl { top: 14px; left: 18px; }
-.hud .tr { top: 14px; right: 18px; text-align: right; }
+.hud .tr { top: 14px; right: 18px; text-align: right; line-height: 1.15; }
+.hud .tc {
+  top: 14px; left: 50%; transform: translateX(-50%);
+  width: min(330px, 32vw); text-align: center;
+}
+.hud .route-name {
+  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: .78em; letter-spacing: .16em; color: rgba(255,204,0,.78);
+}
+.hud .route-progress {
+  position: relative; display: block; height: 2px; margin-top: 4px;
+  background: rgba(233,237,245,.2); overflow: hidden;
+}
+.hud .route-progress i {
+  position: absolute; inset: 0; transform: scaleX(0); transform-origin: 0 50%;
+  background: linear-gradient(90deg, var(--signal-cyan), var(--neon-pink), var(--osd-amber));
+  box-shadow: 0 0 8px rgba(0,242,255,.8);
+}
 .hud .playglyph::before {
   content: ''; display: inline-block;
   border-left: .5em solid var(--osd-amber);
@@ -325,6 +344,15 @@ html.rm .dash .np .np-inner { animation: none; padding-left: 0; display: inline;
   margin: 0 auto;
   padding: 18vh 24px;
 }
+.scene::before {
+  content: attr(data-index);
+  position: absolute; z-index: 0; right: -0.12em; top: 50%;
+  transform: translateY(-54%);
+  font-family: var(--font-display); font-size: clamp(9rem, 24vw, 19rem);
+  line-height: .8; color: var(--acc); opacity: .055;
+  text-shadow: 0 0 40px var(--acc); pointer-events: none;
+}
+.scene > * { position: relative; z-index: 1; }
 html.js .scene {
   position: fixed;
   left: clamp(24px, 7vw, 110px); right: auto;
@@ -338,10 +366,17 @@ html.js .scene {
   z-index: 40;
 }
 html.js .scene.on { pointer-events: auto; }
+html.js .scene.scene-right {
+  left: auto; right: clamp(190px, 18vw, 260px);
+  text-align: right;
+}
+html.js .scene.scene-right::before { right: auto; left: -.08em; }
+html.js .scene.scene-right p { margin-left: auto; }
+html.js .scene.scene-right .tags { justify-content: flex-end; }
 /* The finale card centers: the road ahead is the subject */
 html.js .scene.center {
   left: 50%; right: auto;
-  transform: translate(-50%, -50%) translateY(var(--drift, 0vh));
+  transform: translate(-50%, -62%) translateY(var(--drift, 0vh));
   text-align: center;
 }
 /* Finale sits on the swelling sun (#ffd91f core): the headline needs its
@@ -351,7 +386,23 @@ html.js .scene.center {
   padding: 8px 16px 6px;
   border-radius: 4px;
 }
+.scene.center::before {
+  left: 50%; right: auto; transform: translate(-50%, -54%);
+  color: var(--sun-hi); opacity: .045;
+}
 .scene.center .trk-tab { background: rgba(18,2,48,.78); }
+.route-meta {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.scene-right .route-meta { justify-content: flex-end; }
+.scene.center .route-meta { justify-content: center; }
+.route-meta span {
+  font-family: var(--font-osd); font-size: 14px; line-height: 1;
+  letter-spacing: .15em; color: rgba(233,237,245,.72);
+  text-transform: uppercase;
+}
+.route-meta span + span::before { content: '/'; color: var(--acc); margin-right: 8px; }
 .scene .trk-tab {
   display: inline-block;
   font-family: var(--font-osd);
@@ -416,10 +467,10 @@ html.js .scene.center .tags { justify-content: center; }
 }
 .scene .script {
   font-family: var(--font-script);
-  font-size: clamp(2.2rem, 6.4vw, 4.2rem);
+  font-size: clamp(2rem, 5.3vw, 3.8rem);
   color: var(--neon-pink);
   transform: rotate(-4deg);
-  margin: -.34em 0 .1em;
+  margin: -.28em 0 .18em;
   text-shadow:
     0 0 2px rgba(255,0,255,.9),
     0 0 14px rgba(255,0,255,.75),
@@ -428,6 +479,25 @@ html.js .scene.center .tags { justify-content: center; }
   line-height: 1.2;
   background: none; padding: 0; max-width: none;
 }
+.brief-card {
+  width: min(470px, 100%); margin-top: 18px; padding: 14px 18px 13px;
+  border-left: 5px solid var(--osd-amber);
+  border-top: 1px solid rgba(255,204,0,.35);
+  border-bottom: 1px solid rgba(255,204,0,.18);
+  background: linear-gradient(90deg, rgba(18,2,48,.88), rgba(18,2,48,.42));
+  box-shadow: 0 0 28px rgba(255,204,0,.1);
+}
+.brief-card span, .brief-card small, .brief-card strong { display: block; }
+.brief-card span {
+  font-family: var(--font-osd); font-size: 15px; letter-spacing: .18em;
+  color: var(--osd-amber); text-transform: uppercase;
+}
+.brief-card strong {
+  margin: 3px 0 2px; font-family: var(--font-display); font-weight: 400;
+  font-size: clamp(1.05rem, 2vw, 1.35rem); letter-spacing: .06em; color: #fff;
+  text-shadow: 1px 0 rgba(255,0,255,.7), -1px 0 rgba(0,242,255,.7);
+}
+.brief-card small { color: rgba(244,246,255,.78); font-size: .82rem; line-height: 1.45; }
 .scene .tagline {
   display: inline-block;
   font-family: var(--font-osd);
@@ -454,6 +524,57 @@ html.js .scene.center .tags { justify-content: center; }
   animation: osdblink 1.6s steps(1) infinite;
 }
 html.rm .scene .cue { animation: none; }
+
+.road-sign {
+  display: inline-grid; grid-template-columns: auto 1fr; align-items: stretch;
+  margin-top: 14px; color: #fff; border: 3px solid #fff;
+  background: #174834; box-shadow: 5px 5px 0 rgba(0,0,0,.5);
+  transform: rotate(-1.5deg);
+}
+.road-sign b {
+  display: grid; place-items: center; padding: 4px 10px 2px;
+  border-right: 2px solid #fff; font-family: var(--font-osd); font-size: 24px;
+  font-weight: 400; letter-spacing: .12em;
+}
+.road-sign span {
+  padding: 7px 12px 4px; font-family: var(--font-osd); font-size: 17px;
+  letter-spacing: .1em; white-space: nowrap;
+}
+
+.signal-card {
+  width: min(440px, 100%); margin: 14px 0 0 auto; padding: 10px 14px 12px;
+  text-align: left; border: 1px solid rgba(0,242,255,.65);
+  background: rgba(5,0,14,.78);
+  box-shadow: inset 0 0 26px rgba(0,242,255,.06), 0 0 22px rgba(176,38,255,.22);
+}
+.signal-label {
+  display: block; font-family: var(--font-osd); font-size: 14px;
+  letter-spacing: .17em; color: var(--signal-cyan); text-transform: uppercase;
+}
+.signal-card strong {
+  display: block; margin-top: 5px; font-family: var(--font-osd); font-weight: 400;
+  font-size: 20px; letter-spacing: .16em; color: #fff; text-transform: uppercase;
+}
+.wave { height: 24px; display: flex; align-items: center; gap: 4px; margin: 5px 0 2px; }
+.wave i {
+  width: 3px; height: 18px; background: var(--signal-cyan);
+  box-shadow: 0 0 7px rgba(0,242,255,.7);
+  animation: wavebit .9s ease-in-out infinite alternate;
+  transform-origin: center;
+}
+.wave i:nth-child(2), .wave i:nth-child(8) { height: 9px; animation-delay: -.2s; }
+.wave i:nth-child(3), .wave i:nth-child(7) { height: 22px; animation-delay: -.55s; }
+.wave i:nth-child(4), .wave i:nth-child(6) { height: 13px; animation-delay: -.35s; }
+.wave i:nth-child(5) { height: 24px; animation-delay: -.7s; background: var(--neon-pink); }
+@keyframes wavebit { from { transform: scaleY(.3); opacity: .5; } to { transform: scaleY(1); opacity: 1; } }
+html.rm .wave i { animation: none; }
+
+.scene .payoff {
+  margin-top: 12px; padding: 7px 14px 5px;
+  font-family: var(--font-osd); font-size: clamp(16px, 2vw, 21px);
+  letter-spacing: .16em; text-transform: uppercase; color: var(--osd-amber);
+  border-top: 1px solid rgba(255,204,0,.55); border-bottom: 1px solid rgba(255,204,0,.35);
+}
 
 /* CTAs on the finale */
 .scene .ctas { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 20px; }
@@ -517,6 +638,10 @@ html.js .scene.center .ctas { justify-content: center; }
   display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
 }
 .endcard .inner { padding: 28px 32px 26px; }
+.endcard .end-kicker {
+  font-family: var(--font-osd); font-size: 16px; letter-spacing: .24em;
+  color: var(--signal-cyan); text-transform: uppercase; margin-bottom: 3px;
+}
 .endcard h2 {
   font-family: var(--font-script);
   font-weight: 400;
@@ -575,20 +700,34 @@ html.rm .fx-osdflash.on { animation: none; }
 @media (max-width: 700px) {
   html.js .scene {
     left: 50%; right: auto;
-    top: auto; bottom: calc(90px + env(safe-area-inset-bottom));
+    top: auto; bottom: calc(104px + env(safe-area-inset-bottom));
     transform: translateX(-50%) translateY(var(--drift, 0vh));
     width: min(520px, calc(100vw - 36px));
   }
-  html.js .scene, html.js .scene.center { text-align: center; }
+  html.js .scene, html.js .scene.center, html.js .scene.scene-right {
+    left: 50%; right: auto; text-align: center;
+    transform: translateX(-50%) translateY(var(--drift, 0vh));
+  }
   html.js .scene .tags, html.js .scene .ctas { justify-content: center; }
-  html.js .scene.center { top: auto; bottom: calc(90px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(var(--drift, 0vh)); }
-  .scene .h1 { font-size: clamp(2.1rem, 11vw, 3.2rem); }
-  .scene p { font-size: .95rem; }
+  html.js .scene.scene-right p { margin-left: auto; margin-right: auto; }
+  html.js .scene.scene-right .tags, .scene-right .route-meta, .route-meta { justify-content: center; }
+  html.js .scene.center { top: auto; bottom: calc(157px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(var(--drift, 0vh)); }
+  .scene::before, html.js .scene.scene-right::before { right: auto; left: 50%; transform: translate(-50%, -54%); }
+  .scene .h1 { font-size: clamp(2rem, 10.5vw, 3rem); }
+  .scene h2, .scene .scene-title { font-size: clamp(1.35rem, 7vw, 2rem); }
+  .scene p { font-size: .92rem; }
+  .route-meta { gap: 5px; margin-bottom: 5px; }
+  .route-meta span { font-size: 12px; }
+  .brief-card { margin: 12px auto 0; text-align: left; }
+  .signal-card { margin: 10px auto 0; }
+  .road-sign { margin-left: auto; margin-right: auto; }
   .rail { right: 6px; gap: 2px; }
   .rail a .lbl { display: none; }
-  .hud .tl { display: none; }
-  #car { width: min(340px, 74vw); bottom: 9vh; }
+  .hud .tl, .hud .tc { display: none; }
+  #car { width: min(290px, 60vw); bottom: 9vh; }
   #carRear { width: min(230px, 52vw); }
+  .scene.center > p:not(.payoff) { display: none; }
+  .scene.center .payoff { margin-top: 60px; }
   .dash { gap: 8px; padding-left: 10px; padding-right: 10px; }
   .dash .np { display: none; }
   .dash .speed { min-width: 0; }
@@ -608,6 +747,7 @@ html.rm .fx-osdflash.on { animation: none; }
   .dash .np { text-overflow: ellipsis; }
   .dash .np .np-inner { animation: none; padding-left: 0; display: inline; }
   .car-underglow { animation: none; opacity: .5; }
+  .wave i { animation: none; }
   .fx-osdflash.on { animation: none; }
 }
 </style>

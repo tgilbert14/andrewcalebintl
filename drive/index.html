@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Night Drive — ACI Side B</title>
-<meta name="description" content="Skywave 99.9 presents Night Drive. Side B of the ACI master tape: one coast, one signal, drive until the sun takes you.">
+<meta name="description" content="Night Drive: The Long Way West. One call, one deadline, and a signal moving toward first light. An interactive story by Andrew Caleb International.">
 <meta name="theme-color" content="#120230">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23120230'/%3E%3Cdefs%3E%3ClinearGradient id='s' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23ffd91f'/%3E%3Cstop offset='.55' stop-color='%23ff6a00'/%3E%3Cstop offset='1' stop-color='%23ff2d78'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='32' cy='34' r='20' fill='url(%23s)'/%3E%3Crect x='8' y='38' width='48' height='3' fill='%23120230'/%3E%3Crect x='8' y='45' width='48' height='4' fill='%23120230'/%3E%3Crect x='8' y='53' width='48' height='5' fill='%23120230'/%3E%3C/svg%3E">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Night Drive — ACI Side B">
-<meta property="og:description" content="Skywave 99.9 presents Night Drive. Side B of the ACI master tape: one coast, one signal, drive until the sun takes you.">
+<meta property="og:description" content="Night Drive: The Long Way West. One call, one deadline, and a signal moving toward first light. An interactive story by Andrew Caleb International.">
 <meta property="og:url" content="https://www.andrewcalebintl.com/drive/">
 <meta property="og:image" content="https://www.andrewcalebintl.com/og.png">
 <meta property="og:image:width" content="1200">
@@ -229,9 +229,28 @@ html.rm .car-underglow { animation: none; opacity: .5; }
    HUD — the dash. Top corners = tape chrome, bottom bar = dashboard.
    ============================================================ */
 .hud { position: fixed; inset: 0; z-index: 850; pointer-events: none; }
+.hud, .rail { transition: opacity .35s ease, visibility .35s ease; }
+html.at-end .hud, html.at-end .rail { opacity: 0; visibility: hidden; }
 .hud > div { position: fixed; }
 .hud .tl { top: 14px; left: 18px; }
-.hud .tr { top: 14px; right: 18px; text-align: right; }
+.hud .tr { top: 14px; right: 18px; text-align: right; line-height: 1.15; }
+.hud .tc {
+  top: 14px; left: 50%; transform: translateX(-50%);
+  width: min(330px, 32vw); text-align: center;
+}
+.hud .route-name {
+  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: .78em; letter-spacing: .16em; color: rgba(255,204,0,.78);
+}
+.hud .route-progress {
+  position: relative; display: block; height: 2px; margin-top: 4px;
+  background: rgba(233,237,245,.2); overflow: hidden;
+}
+.hud .route-progress i {
+  position: absolute; inset: 0; transform: scaleX(0); transform-origin: 0 50%;
+  background: linear-gradient(90deg, var(--signal-cyan), var(--neon-pink), var(--osd-amber));
+  box-shadow: 0 0 8px rgba(0,242,255,.8);
+}
 .hud .playglyph::before {
   content: ''; display: inline-block;
   border-left: .5em solid var(--osd-amber);
@@ -343,6 +362,15 @@ html.rm .dash .np .np-inner { animation: none; padding-left: 0; display: inline;
   margin: 0 auto;
   padding: 18vh 24px;
 }
+.scene::before {
+  content: attr(data-index);
+  position: absolute; z-index: 0; right: -0.12em; top: 50%;
+  transform: translateY(-54%);
+  font-family: var(--font-display); font-size: clamp(9rem, 24vw, 19rem);
+  line-height: .8; color: var(--acc); opacity: .055;
+  text-shadow: 0 0 40px var(--acc); pointer-events: none;
+}
+.scene > * { position: relative; z-index: 1; }
 html.js .scene {
   position: fixed;
   left: clamp(24px, 7vw, 110px); right: auto;
@@ -356,10 +384,17 @@ html.js .scene {
   z-index: 40;
 }
 html.js .scene.on { pointer-events: auto; }
+html.js .scene.scene-right {
+  left: auto; right: clamp(190px, 18vw, 260px);
+  text-align: right;
+}
+html.js .scene.scene-right::before { right: auto; left: -.08em; }
+html.js .scene.scene-right p { margin-left: auto; }
+html.js .scene.scene-right .tags { justify-content: flex-end; }
 /* The finale card centers: the road ahead is the subject */
 html.js .scene.center {
   left: 50%; right: auto;
-  transform: translate(-50%, -50%) translateY(var(--drift, 0vh));
+  transform: translate(-50%, -62%) translateY(var(--drift, 0vh));
   text-align: center;
 }
 /* Finale sits on the swelling sun (#ffd91f core): the headline needs its
@@ -369,7 +404,23 @@ html.js .scene.center {
   padding: 8px 16px 6px;
   border-radius: 4px;
 }
+.scene.center::before {
+  left: 50%; right: auto; transform: translate(-50%, -54%);
+  color: var(--sun-hi); opacity: .045;
+}
 .scene.center .trk-tab { background: rgba(18,2,48,.78); }
+.route-meta {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.scene-right .route-meta { justify-content: flex-end; }
+.scene.center .route-meta { justify-content: center; }
+.route-meta span {
+  font-family: var(--font-osd); font-size: 14px; line-height: 1;
+  letter-spacing: .15em; color: rgba(233,237,245,.72);
+  text-transform: uppercase;
+}
+.route-meta span + span::before { content: '/'; color: var(--acc); margin-right: 8px; }
 .scene .trk-tab {
   display: inline-block;
   font-family: var(--font-osd);
@@ -434,10 +485,10 @@ html.js .scene.center .tags { justify-content: center; }
 }
 .scene .script {
   font-family: var(--font-script);
-  font-size: clamp(2.2rem, 6.4vw, 4.2rem);
+  font-size: clamp(2rem, 5.3vw, 3.8rem);
   color: var(--neon-pink);
   transform: rotate(-4deg);
-  margin: -.34em 0 .1em;
+  margin: -.28em 0 .18em;
   text-shadow:
     0 0 2px rgba(255,0,255,.9),
     0 0 14px rgba(255,0,255,.75),
@@ -446,6 +497,25 @@ html.js .scene.center .tags { justify-content: center; }
   line-height: 1.2;
   background: none; padding: 0; max-width: none;
 }
+.brief-card {
+  width: min(470px, 100%); margin-top: 18px; padding: 14px 18px 13px;
+  border-left: 5px solid var(--osd-amber);
+  border-top: 1px solid rgba(255,204,0,.35);
+  border-bottom: 1px solid rgba(255,204,0,.18);
+  background: linear-gradient(90deg, rgba(18,2,48,.88), rgba(18,2,48,.42));
+  box-shadow: 0 0 28px rgba(255,204,0,.1);
+}
+.brief-card span, .brief-card small, .brief-card strong { display: block; }
+.brief-card span {
+  font-family: var(--font-osd); font-size: 15px; letter-spacing: .18em;
+  color: var(--osd-amber); text-transform: uppercase;
+}
+.brief-card strong {
+  margin: 3px 0 2px; font-family: var(--font-display); font-weight: 400;
+  font-size: clamp(1.05rem, 2vw, 1.35rem); letter-spacing: .06em; color: #fff;
+  text-shadow: 1px 0 rgba(255,0,255,.7), -1px 0 rgba(0,242,255,.7);
+}
+.brief-card small { color: rgba(244,246,255,.78); font-size: .82rem; line-height: 1.45; }
 .scene .tagline {
   display: inline-block;
   font-family: var(--font-osd);
@@ -472,6 +542,57 @@ html.js .scene.center .tags { justify-content: center; }
   animation: osdblink 1.6s steps(1) infinite;
 }
 html.rm .scene .cue { animation: none; }
+
+.road-sign {
+  display: inline-grid; grid-template-columns: auto 1fr; align-items: stretch;
+  margin-top: 14px; color: #fff; border: 3px solid #fff;
+  background: #174834; box-shadow: 5px 5px 0 rgba(0,0,0,.5);
+  transform: rotate(-1.5deg);
+}
+.road-sign b {
+  display: grid; place-items: center; padding: 4px 10px 2px;
+  border-right: 2px solid #fff; font-family: var(--font-osd); font-size: 24px;
+  font-weight: 400; letter-spacing: .12em;
+}
+.road-sign span {
+  padding: 7px 12px 4px; font-family: var(--font-osd); font-size: 17px;
+  letter-spacing: .1em; white-space: nowrap;
+}
+
+.signal-card {
+  width: min(440px, 100%); margin: 14px 0 0 auto; padding: 10px 14px 12px;
+  text-align: left; border: 1px solid rgba(0,242,255,.65);
+  background: rgba(5,0,14,.78);
+  box-shadow: inset 0 0 26px rgba(0,242,255,.06), 0 0 22px rgba(176,38,255,.22);
+}
+.signal-label {
+  display: block; font-family: var(--font-osd); font-size: 14px;
+  letter-spacing: .17em; color: var(--signal-cyan); text-transform: uppercase;
+}
+.signal-card strong {
+  display: block; margin-top: 5px; font-family: var(--font-osd); font-weight: 400;
+  font-size: 20px; letter-spacing: .16em; color: #fff; text-transform: uppercase;
+}
+.wave { height: 24px; display: flex; align-items: center; gap: 4px; margin: 5px 0 2px; }
+.wave i {
+  width: 3px; height: 18px; background: var(--signal-cyan);
+  box-shadow: 0 0 7px rgba(0,242,255,.7);
+  animation: wavebit .9s ease-in-out infinite alternate;
+  transform-origin: center;
+}
+.wave i:nth-child(2), .wave i:nth-child(8) { height: 9px; animation-delay: -.2s; }
+.wave i:nth-child(3), .wave i:nth-child(7) { height: 22px; animation-delay: -.55s; }
+.wave i:nth-child(4), .wave i:nth-child(6) { height: 13px; animation-delay: -.35s; }
+.wave i:nth-child(5) { height: 24px; animation-delay: -.7s; background: var(--neon-pink); }
+@keyframes wavebit { from { transform: scaleY(.3); opacity: .5; } to { transform: scaleY(1); opacity: 1; } }
+html.rm .wave i { animation: none; }
+
+.scene .payoff {
+  margin-top: 12px; padding: 7px 14px 5px;
+  font-family: var(--font-osd); font-size: clamp(16px, 2vw, 21px);
+  letter-spacing: .16em; text-transform: uppercase; color: var(--osd-amber);
+  border-top: 1px solid rgba(255,204,0,.55); border-bottom: 1px solid rgba(255,204,0,.35);
+}
 
 /* CTAs on the finale */
 .scene .ctas { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 20px; }
@@ -535,6 +656,10 @@ html.js .scene.center .ctas { justify-content: center; }
   display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
 }
 .endcard .inner { padding: 28px 32px 26px; }
+.endcard .end-kicker {
+  font-family: var(--font-osd); font-size: 16px; letter-spacing: .24em;
+  color: var(--signal-cyan); text-transform: uppercase; margin-bottom: 3px;
+}
 .endcard h2 {
   font-family: var(--font-script);
   font-weight: 400;
@@ -593,20 +718,34 @@ html.rm .fx-osdflash.on { animation: none; }
 @media (max-width: 700px) {
   html.js .scene {
     left: 50%; right: auto;
-    top: auto; bottom: calc(90px + env(safe-area-inset-bottom));
+    top: auto; bottom: calc(104px + env(safe-area-inset-bottom));
     transform: translateX(-50%) translateY(var(--drift, 0vh));
     width: min(520px, calc(100vw - 36px));
   }
-  html.js .scene, html.js .scene.center { text-align: center; }
+  html.js .scene, html.js .scene.center, html.js .scene.scene-right {
+    left: 50%; right: auto; text-align: center;
+    transform: translateX(-50%) translateY(var(--drift, 0vh));
+  }
   html.js .scene .tags, html.js .scene .ctas { justify-content: center; }
-  html.js .scene.center { top: auto; bottom: calc(90px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(var(--drift, 0vh)); }
-  .scene .h1 { font-size: clamp(2.1rem, 11vw, 3.2rem); }
-  .scene p { font-size: .95rem; }
+  html.js .scene.scene-right p { margin-left: auto; margin-right: auto; }
+  html.js .scene.scene-right .tags, .scene-right .route-meta, .route-meta { justify-content: center; }
+  html.js .scene.center { top: auto; bottom: calc(157px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(var(--drift, 0vh)); }
+  .scene::before, html.js .scene.scene-right::before { right: auto; left: 50%; transform: translate(-50%, -54%); }
+  .scene .h1 { font-size: clamp(2rem, 10.5vw, 3rem); }
+  .scene h2, .scene .scene-title { font-size: clamp(1.35rem, 7vw, 2rem); }
+  .scene p { font-size: .92rem; }
+  .route-meta { gap: 5px; margin-bottom: 5px; }
+  .route-meta span { font-size: 12px; }
+  .brief-card { margin: 12px auto 0; text-align: left; }
+  .signal-card { margin: 10px auto 0; }
+  .road-sign { margin-left: auto; margin-right: auto; }
   .rail { right: 6px; gap: 2px; }
   .rail a .lbl { display: none; }
-  .hud .tl { display: none; }
-  #car { width: min(340px, 74vw); bottom: 9vh; }
+  .hud .tl, .hud .tc { display: none; }
+  #car { width: min(290px, 60vw); bottom: 9vh; }
   #carRear { width: min(230px, 52vw); }
+  .scene.center > p:not(.payoff) { display: none; }
+  .scene.center .payoff { margin-top: 60px; }
   .dash { gap: 8px; padding-left: 10px; padding-right: 10px; }
   .dash .np { display: none; }
   .dash .speed { min-width: 0; }
@@ -626,6 +765,7 @@ html.rm .fx-osdflash.on { animation: none; }
   .dash .np { text-overflow: ellipsis; }
   .dash .np .np-inner { animation: none; padding-left: 0; display: inline; }
   .car-underglow { animation: none; opacity: .5; }
+  .wave i { animation: none; }
   .fx-osdflash.on { animation: none; }
 }
 </style>
@@ -647,17 +787,21 @@ html.rm .fx-osdflash.on { animation: none; }
 <!-- HUD (decorative tape chrome; live controls live on the dash) -->
 <div class="hud" aria-hidden="true">
   <div class="tl osd"><span class="playglyph"></span>PLAY&nbsp;&nbsp;<span id="hudTrk">TRK 01</span> &middot; SIDE B</div>
-  <div class="tr osd">SP &middot; <span id="hudCounter">0:00:00</span></div>
+  <div class="tc osd">
+    <span class="route-name" id="routeStatus">WESTBOUND / THE CALL</span>
+    <span class="route-progress"><i id="routeFill"></i></span>
+  </div>
+  <div class="tr osd">SP &middot; <span id="hudCounter">0:00:00</span><br><span id="hudTime">21:47</span> LOCAL</div>
 </div>
 
 <!-- ROUTE RAIL: the tracklist -->
 <nav class="rail" aria-label="Tracklist">
-  <a href="#trk01" data-i="0" style="--acc:#ffcc00" class="active" aria-current="true"><span class="lbl">TRK 01 &middot; Ignition</span></a>
+  <a href="#trk01" data-i="0" style="--acc:#ffcc00" class="active" aria-current="true"><span class="lbl">TRK 01 &middot; The Call</span></a>
   <a href="#trk02" data-i="1" style="--acc:#00f2ff"><span class="lbl">TRK 02 &middot; The City</span></a>
-  <a href="#trk03" data-i="2" style="--acc:#ff6a00"><span class="lbl">TRK 03 &middot; The Expressway</span></a>
-  <a href="#trk04" data-i="3" style="--acc:#b026ff"><span class="lbl">TRK 04 &middot; The Coast</span></a>
-  <a href="#trk05" data-i="4" style="--acc:#ff00ff"><span class="lbl">TRK 05 &middot; The Grid</span></a>
-  <a href="#trk06" data-i="5" style="--acc:#ffd91f"><span class="lbl">TRK 06 &middot; Into the Sun</span></a>
+  <a href="#trk03" data-i="2" style="--acc:#ff6a00"><span class="lbl">TRK 03 &middot; The Deadline</span></a>
+  <a href="#trk04" data-i="3" style="--acc:#b026ff"><span class="lbl">TRK 04 &middot; The Signal</span></a>
+  <a href="#trk05" data-i="4" style="--acc:#ff00ff"><span class="lbl">TRK 05 &middot; Off-Map</span></a>
+  <a href="#trk06" data-i="5" style="--acc:#ffd91f"><span class="lbl">TRK 06 &middot; First Light</span></a>
 </nav>
 
 <!-- THE CAR: side view rides TRK 01–05, rear view owns the finale -->
@@ -822,54 +966,67 @@ html.rm .fx-osdflash.on { animation: none; }
 <main id="main">
 <div id="track">
 
-<!-- ============ TRK 01 : IGNITION ============ -->
-<section class="scene" id="trk01" data-trk="TRK 01" data-name="IGNITION" style="--acc:#ffcc00">
-  <p class="eyebrow">Skywave 99.9 Presents</p>
+<!-- ============ TRK 01 : THE CALL ============ -->
+<section class="scene scene-intro" id="trk01" data-trk="TRK 01" data-name="THE CALL" data-index="01" style="--acc:#ffcc00">
+  <div class="route-meta"><span>21:47 LOCAL</span><span>34.0522&deg; N</span><span>PRIORITY</span></div>
+  <p class="eyebrow">Andrew Caleb International Presents</p>
   <h1 class="h1"><span class="chrome-text">NIGHT DRIVE</span></h1>
-  <p class="script">Side B</p>
-  <p class="tagline">Scroll to Drive</p>
-  <p>The office closes at dusk. The coast opens at eight. This is the part of the job that never made the brochure.</p>
-  <p class="cue" aria-hidden="true">&#9660; Shift Into Drive</p>
+  <p class="script">The Long Way West</p>
+  <div class="brief-card">
+    <span>INCOMING // UNKNOWN ORIGIN</span>
+    <strong>WEST. BEFORE SUNRISE.</strong>
+    <small>No address. No introduction. Just a signal leaving town.</small>
+  </div>
+  <p class="cue" aria-hidden="true">&#9660; Scroll to shift into drive</p>
 </section>
 
 <!-- ============ TRK 02 : THE CITY ============ -->
-<section class="scene" id="trk02" data-trk="TRK 02" data-name="THE CITY" style="--acc:#00f2ff">
+<section class="scene scene-right" id="trk02" data-trk="TRK 02" data-name="THE CITY" data-index="02" style="--acc:#00f2ff">
+  <div class="route-meta"><span>22:13</span><span>11 MI WEST</span><span>NO RSVP</span></div>
   <span class="trk-tab">TRK 02 &middot; The City</span>
-  <h2>Every Window Is a Meeting.</h2>
-  <p>Downtown still glows with unfinished business. We pass all of it. Tonight's appointment is with the horizon.</p>
-  <div class="tags"><span>Downtown</span><span>42 Floors</span><span>Neon</span></div>
+  <h2>Every Window Is a Maybe.</h2>
+  <p>The city is a thousand closed doors pretending to be walls. We pass every one. Tonight's only appointment is moving west.</p>
+  <div class="tags"><span>0 Invitations</span><span>1 Direction</span><span>Due West</span></div>
 </section>
 
-<!-- ============ TRK 03 : THE EXPRESSWAY ============ -->
-<section class="scene" id="trk03" data-trk="TRK 03" data-name="THE EXPRESSWAY" style="--acc:#ff6a00">
-  <span class="trk-tab">TRK 03 &middot; The Expressway</span>
-  <h2>Eight Lanes, No Questions.</h2>
-  <p>The expressway doesn't ask where you're headed, and we extend it the same courtesy.</p>
-  <div class="tags"><span>Speed 88</span><span>Sodium Glow</span></div>
+<!-- ============ TRK 03 : THE DEADLINE ============ -->
+<section class="scene" id="trk03" data-trk="TRK 03" data-name="THE DEADLINE" data-index="03" style="--acc:#ff6a00">
+  <div class="route-meta"><span>00:08</span><span>61 MI WEST</span><span>T&minus;05:50</span></div>
+  <span class="trk-tab">TRK 03 &middot; The Deadline</span>
+  <h2>The Brief Gets Shorter at Speed.</h2>
+  <p>By midnight, names disappear. Then landmarks. Then reasons. All that's left is a time, a direction, and the nerve to keep going.</p>
+  <div class="road-sign" aria-hidden="true"><b>WEST</b><span>NEXT EXIT: UNKNOWN</span></div>
 </section>
 
-<!-- ============ TRK 04 : THE COAST ============ -->
-<section class="scene" id="trk04" data-trk="TRK 04" data-name="THE COAST" style="--acc:#b026ff">
-  <span class="trk-tab">TRK 04 &middot; The Coast</span>
-  <h2>The Ocean Keeps Our Hours.</h2>
-  <p>City in the mirror, moon on the water. Somewhere past the break is everyone we haven't met yet.</p>
-  <div class="tags"><span>Coast Hwy</span><span>Moonrise</span><span>Palms</span></div>
+<!-- ============ TRK 04 : THE SIGNAL ============ -->
+<section class="scene scene-right" id="trk04" data-trk="TRK 04" data-name="THE SIGNAL" data-index="04" style="--acc:#b026ff">
+  <div class="route-meta"><span>02:26</span><span>COAST HWY</span><span>CARRIER 99.9</span></div>
+  <span class="trk-tab">TRK 04 &middot; The Signal</span>
+  <h2>Then the Static Says Your Name.</h2>
+  <p>The city falls out of the mirror. The ocean takes its place. Somewhere between stations, the unknown voice comes back.</p>
+  <div class="signal-card">
+    <span class="signal-label">SIGNAL ACQUIRED // 02:26:14</span>
+    <span class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+    <strong>COME ALONE. FIRST LIGHT.</strong>
+  </div>
 </section>
 
-<!-- ============ TRK 05 : THE GRID ============ -->
-<section class="scene" id="trk05" data-trk="TRK 05" data-name="THE GRID" style="--acc:#ff00ff">
-  <span class="trk-tab">TRK 05 &middot; The Grid</span>
-  <h2>Past the Last Exit.</h2>
-  <p>Out here the map gives up and the signal takes over. Skywave comes in clearer than it has any right to.</p>
-  <div class="tags"><span>No Service</span><span>Full Signal</span></div>
+<!-- ============ TRK 05 : OFF-MAP ============ -->
+<section class="scene" id="trk05" data-trk="TRK 05" data-name="OFF-MAP" data-index="05" style="--acc:#ff00ff">
+  <div class="route-meta"><span>04:51</span><span>COORDINATES LOST</span><span>17 MI REMAIN</span></div>
+  <span class="trk-tab">TRK 05 &middot; Off-Map</span>
+  <h2>The Map Ends. The Network Begins.</h2>
+  <p>No road names. No bars. Full signal. Out here, the world stops being something you can search and becomes someone you have to know.</p>
+  <div class="tags"><span>No Service</span><span>Full Signal</span><span>Keep Going</span></div>
 </section>
 
-<!-- ============ TRK 06 : INTO THE SUN ============ -->
-<section class="scene center" id="trk06" data-trk="TRK 06" data-name="INTO THE SUN" style="--acc:#ffd91f">
-  <span class="trk-tab">TRK 06 &middot; Into the Sun</span>
-  <h2>Drive Until the Sun Takes You.</h2>
-  <p>Every tape runs out. The good ones run out on the chorus.</p>
-  <div class="tags"><span>Due West</span><span>End of Tape</span></div>
+<!-- ============ TRK 06 : FIRST LIGHT ============ -->
+<section class="scene center" id="trk06" data-trk="TRK 06" data-name="FIRST LIGHT" data-index="06" style="--acc:#ffd91f">
+  <div class="route-meta"><span>05:58</span><span>FIRST LIGHT</span><span>LINE OPEN</span></div>
+  <span class="trk-tab">TRK 06 &middot; First Light</span>
+  <h2>Go Anywhere.<br>Meet Anyone.</h2>
+  <p>The sun was never the destination. The person waiting on the other side was.</p>
+  <p class="payoff">The world gets smaller when you know who to call.</p>
 </section>
 
 </div>
@@ -877,22 +1034,23 @@ html.rm .fx-osdflash.on { animation: none; }
 <!-- ============ END CARD (after the tape runs out) ============ -->
 <section class="endcard" id="end">
   <div class="tape-card">
-    <div class="strip"><span>Side B &middot; End of Tape</span><span>Recorded somewhere west of everything</span></div>
+    <div class="strip"><span>Mission 001 &middot; Signal Complete</span><span>Recorded somewhere west of everything</span></div>
     <div class="inner">
-      <h2>End of Side B</h2>
+      <p class="end-kicker">Andrew Caleb International</p>
+      <h2>The Line Is Open</h2>
       <div class="lines">
-        <p>You made it to the end of the tape. The sun has the car now; the Operator will want it back by morning.</p>
-        <p>Same time tomorrow. The coast isn't going anywhere.</p>
+        <p>Every serious thing starts the same way: someone goes first.</p>
+        <p>Tell us where you're trying to get&mdash;or who you're trying to meet.</p>
       </div>
       <div class="actions">
+        <a class="btn btn-primary" href="mailto:contactandrewcalebintl@gmail.com">&#9679; Open a Line</a>
         <button class="rewind" id="rewBtn">&#9664;&#9664; Rew &middot; Drive It Again</button>
-        <a class="btn btn-primary" href="../">&#9654; Play Side A</a>
-        <a class="btn btn-ghost" href="mailto:contactandrewcalebintl@gmail.com">&#9167; Eject &middot; Send Transmission</a>
+        <a class="btn btn-ghost" href="../">&#9654; Play Side A</a>
       </div>
     </div>
   </div>
-  <p class="micro">ACI Master Tape 001 &middot; Side B &middot; Stereo Hi-Fi &middot; Be Kind, Rewind</p>
-  <p class="legal">&copy; 2026 Andrew Caleb International. No cars were harmed. The sun gives it back every morning.</p>
+  <p class="micro">ACI Master Tape 001 &middot; Side B &middot; One Signal &middot; Six Tracks &middot; Due West</p>
+  <p class="legal">&copy; 2026 Andrew Caleb International. Go anywhere. Meet anyone.</p>
   <noscript><p class="legal">The drive itself needs JavaScript; the tape notes above read fine without it.</p></noscript>
 </section>
 </main>
@@ -1078,7 +1236,7 @@ html.rm .fx-osdflash.on { animation: none; }
   }
 
   /* ---------- Precomputed world furniture ---------- */
-  var stars = [], shimmer = [], ridgeL = [], ridgeR = [];
+  var stars = [], shimmer = [], rain = [], ridgeL = [], ridgeR = [];
   (function seedWorld() {
     var r = mulberry(1986);
     for (var i = 0; i < 110; i++) {
@@ -1086,6 +1244,9 @@ html.rm .fx-osdflash.on { animation: none; }
     }
     for (i = 0; i < 64; i++) {
       shimmer.push({ x: r(), y: r(), len: 14 + r() * 60, ph: r() * 6.28, sp: 0.3 + r() * 0.8, c: r() < 0.3 ? '#04d9ff' : (r() < 0.5 ? '#b026ff' : '#ffffff') });
+    }
+    for (i = 0; i < 72; i++) {
+      rain.push({ x: r(), y: r(), len: 8 + r() * 22, sp: 0.7 + r() * 1.3, a: 0.12 + r() * 0.32 });
     }
     var x, y;
     for (x = 0; x <= 12; x++) { ridgeL.push([x / 12 * 0.44, (x % 2 ? 0.05 : 0.02) + r() * 0.075]); }
@@ -1284,6 +1445,22 @@ html.rm .fx-osdflash.on { animation: none; }
       ctx.globalAlpha = 1;
     }
 
+    /* CITY RAIN — a quiet moving scrim that makes the first departure feel
+       materially different from the clear coast that follows. */
+    var aRain = env(T, 0.55, 0.9, 1.75, 2.2);
+    if (aRain > 0.01) {
+      ctx.lineWidth = 1;
+      for (i = 0; i < rain.length; i++) {
+        var rn = rain[i];
+        var ry = RM ? rn.y * H : ((rn.y * H + time * 260 * rn.sp) % (H + 70)) - 35;
+        var rx = ((rn.x * W - worldX * 0.035) % (W + 100) + W + 100) % (W + 100) - 50;
+        ctx.globalAlpha = aRain * rn.a;
+        ctx.strokeStyle = i % 7 === 0 ? '#00f2ff' : '#dff3ff';
+        ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - rn.len * 0.35, ry + rn.len); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
     /* MOON (coast) */
     var aMoon = env(T, 2.75, 3.15, 4.1, 4.6);
     var moonX = W * 0.72, moonY = H * 0.2;
@@ -1295,6 +1472,21 @@ html.rm .fx-osdflash.on { animation: none; }
       ctx.fillStyle = 'rgba(210,215,235,.55)';
       ctx.beginPath(); ctx.arc(moonX - H * 0.007, moonY + H * 0.004, H * 0.006, 0, 7); ctx.fill();
       ctx.beginPath(); ctx.arc(moonX + H * 0.009, moonY - H * 0.008, H * 0.004, 0, 7); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    /* The incoming coast transmission becomes visible as expanding carrier
+       rings. Slow, scroll-gated and decorative; no strobe or flash. */
+    var aCarrier = env(T, 3.15, 3.4, 3.95, 4.3);
+    if (aCarrier > 0.01) {
+      var carrierPhase = RM ? 0.45 : (time * 0.18) % 1;
+      for (var cr = 0; cr < 3; cr++) {
+        var cp = (carrierPhase + cr / 3) % 1;
+        ctx.globalAlpha = aCarrier * (1 - cp) * 0.5;
+        ctx.strokeStyle = cr === 1 ? '#ff00ff' : '#00f2ff';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.arc(moonX, moonY, H * (0.045 + cp * 0.12), -0.5, 2.15); ctx.stroke();
+      }
       ctx.globalAlpha = 1;
     }
 
@@ -1548,10 +1740,13 @@ html.rm .fx-osdflash.on { animation: none; }
      COPY CHOREOGRAPHY + RAIL + HUD
      ============================================================ */
   var railLinks = $$('.rail a');
-  var hudTrk = $('#hudTrk'), hudCounter = $('#hudCounter');
+  var hudTrk = $('#hudTrk'), hudCounter = $('#hudCounter'), hudTime = $('#hudTime');
+  var routeStatus = $('#routeStatus'), routeFill = $('#routeFill');
   var dashMph = document.querySelector('#dashSpeed b');
   var sceneOps = scenes.map(function () { return -1; });
-  var activeIx = -1, lastCounter = '';
+  var activeIx = -1, lastCounter = '', lastProgress = -1, atEnd = false;
+  var STORY_TIMES = ['21:47', '22:13', '00:08', '02:26', '04:51', '05:58'];
+  var STORY_STATUS = ['WESTBOUND / THE CALL', 'CITY LIMITS / NO RSVP', 'PACIFIC / THE DEADLINE', 'COAST HWY / SIGNAL ACQUIRED', 'OFF-MAP / KEEP GOING', 'FIRST LIGHT / LINE OPEN'];
 
   function choreo(T) {
     for (var i = 0; i < N; i++) {
@@ -1570,6 +1765,16 @@ html.rm .fx-osdflash.on { animation: none; }
       if (op > 0 && !RM) el.style.setProperty('--drift', ((0.5 - pr) * 4).toFixed(2) + 'vh');
     }
     var ix = clamp(Math.floor(T + 0.0001), 0, N - 1);
+    var progress = Math.round(clamp(T / N, 0, 1) * 200) / 200;
+    if (progress !== lastProgress && routeFill) {
+      lastProgress = progress;
+      routeFill.style.transform = 'scaleX(' + progress.toFixed(3) + ')';
+    }
+    var endNow = T > 5.94;
+    if (endNow !== atEnd) {
+      atEnd = endNow;
+      document.documentElement.classList.toggle('at-end', atEnd);
+    }
     if (ix !== activeIx) {
       activeIx = ix;
       railLinks.forEach(function (l, k) {
@@ -1578,6 +1783,8 @@ html.rm .fx-osdflash.on { animation: none; }
         else l.removeAttribute('aria-current');
       });
       if (hudTrk) hudTrk.textContent = 'TRK 0' + (ix + 1);
+      if (hudTime) hudTime.textContent = STORY_TIMES[ix];
+      if (routeStatus) routeStatus.textContent = STORY_STATUS[ix];
       if (AE.blip) AE.blip();
     }
   }
@@ -1698,7 +1905,7 @@ html.rm .fx-osdflash.on { animation: none; }
     }
 
     /* tape counter follows the scroll */
-    var secs = Math.round(227 * clamp(y / Math.max(1, trackH - vh), 0, 1));
+    var secs = Math.round(227 * clamp(curT / N, 0, 1));
     var cnt = '0:' + pad2(Math.floor(secs / 60)) + ':' + pad2(secs % 60);
     if (cnt !== lastCounter && hudCounter) { lastCounter = cnt; hudCounter.textContent = cnt; }
 
