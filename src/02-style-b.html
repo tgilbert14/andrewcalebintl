@@ -618,8 +618,20 @@ html.rm .btn-rec .dot { animation: none; }
   margin-right: 14px;
 }
 .footer a.flip:hover { background: rgba(255,0,255,.1); box-shadow: 0 0 18px rgba(255,0,255,.3); }
-.tapenav a.sideb { color: var(--neon-pink); }
-.tapenav a.sideb:hover { color: #ff5fff; }
+.tapenav a.sidea, .tapenav a.sideb {
+  padding: 2px 8px 0;
+  border: 1px solid currentColor;
+  background: rgba(11,0,26,.58);
+}
+.tapenav a.sidea { color: var(--signal-cyan); }
+.tapenav a.sideb {
+  color: var(--neon-pink);
+  box-shadow: 0 0 12px rgba(255,0,255,.16);
+}
+.tapenav a.sideb:hover {
+  color: #ff5fff; background: rgba(255,0,255,.09);
+  box-shadow: 0 0 18px rgba(255,0,255,.32);
+}
 .footer .rewind.blink { animation: osdblink 1.1s steps(1) infinite; }
 html.rm .footer .rewind.blink { animation: none; }
 .footer p { color: rgba(244,246,255,.85); font-size: .92rem; margin-bottom: 6px; }

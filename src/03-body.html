@@ -48,13 +48,13 @@ try { if (sessionStorage.getItem('aci_boot')) document.getElementById('boot').st
 
 <!-- NAV -->
 <nav class="tapenav" aria-label="Sections">
-  <a href="#top" data-ch="CH 01" data-name="SIGNAL" class="active">Top</a>
+  <a href="#top" data-ch="CH 01" data-name="SIGNAL" class="active sidea">Side A <span aria-hidden="true">&#9679;</span></a>
+  <a href="drive/" class="sideb" title="Night Drive: The Long Way West — flip the tape">Side B <span aria-hidden="true">&#9654;</span></a>
   <a href="#fleet" data-ch="CH 02" data-name="FLEET TRACKER">Fleet</a>
   <a href="#ethos" data-ch="CH 03" data-name="THE ETHOS">Ethos</a>
   <a href="#channels" data-ch="CH 04" data-name="CHANNELS">Channels</a>
   <a href="#operator" data-ch="CH 05" data-name="THE OPERATOR">Operator</a>
   <a href="#contact" data-ch="CH 06" data-name="TRANSMISSION">Contact</a>
-  <a href="drive/" class="sideb" title="Night Drive — flip the tape">Side B &#9654;</a>
 </nav>
 
 <div class="page" id="page">
@@ -107,7 +107,7 @@ try { if (sessionStorage.getItem('aci_boot')) document.getElementById('boot').st
     <div class="hero-ctas">
       <a class="btn btn-primary" href="#contact" data-ch="CH 06" data-name="TRANSMISSION">Make Contact</a>
       <a class="btn btn-ghost" href="#fleet" data-ch="CH 02" data-name="FLEET TRACKER">Track the Fleet</a>
-      <a class="btn btn-flip" href="drive/">&#9654; Side B: Night Drive</a>
+      <a class="btn btn-flip" href="drive/">&#9654; Side B: The Long Way West</a>
     </div>
   </div>
   <div class="hero-cue" aria-hidden="true">&#9660; Cont. Play</div>
@@ -296,7 +296,7 @@ try { if (sessionStorage.getItem('aci_boot')) document.getElementById('boot').st
   <h2 class="section-title">The Line Is Open</h2>
   <div class="contact-wrap">
     <div class="tape-card">
-      <div class="strip"><span>Side B</span><span id="stripMsg">Record your message after the tone</span></div>
+      <div class="strip"><span>Side A &middot; CH 06</span><span id="stripMsg">Record your message after the tone</span></div>
       <div class="inner">
         <h3>Send Transmission</h3>
         <div class="lines">
@@ -318,7 +318,7 @@ try { if (sessionStorage.getItem('aci_boot')) document.getElementById('boot').st
 <footer class="footer">
   <p class="cheat">Cheat Code // <b>&#8593; &#8593; &#8595; &#8595; &#8592; &#8594; &#8592; &#8594; B A</b> // Type it anywhere. You did not hear it from us.</p>
   <p class="cheat-sub">No keyboard? Tap the REC dot three times. Same result. Same deniability.</p>
-  <a class="rewind flip" href="drive/">&#9654; Flip Tape &middot; Side B: Night Drive</a>
+  <a class="rewind flip" href="drive/">&#9654; Flip Tape &middot; Side B: The Long Way West</a>
   <button class="rewind" id="rewBtn">&#9664;&#9664; Rew &middot; Back to Top</button>
   <p>&copy; 2026 Andrew Caleb International. All rights reserved.</p>
   <p class="signoff">Be Kind, Rewind.</p>
