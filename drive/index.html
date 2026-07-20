@@ -15,6 +15,7 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
+<script type="speculationrules">{"prerender":[{"urls":["../"],"eagerness":"moderate"}]}</script>
 </head>
 <body>
 <style>
@@ -768,6 +769,27 @@ html.rm .fx-osdflash.on { animation: none; }
   .wave i { animation: none; }
   .fx-osdflash.on { animation: none; }
 }
+
+/* EJECT SEQUENCE — cross-document View Transitions (mirror of Side A's
+   block; both documents must opt in for the tape flip to run). */
+@view-transition { navigation: auto; }
+::view-transition-old(root) {
+  animation: vt-eject .3s cubic-bezier(.4, 0, .8, .6) both;
+}
+::view-transition-new(root) {
+  animation: vt-insert .38s cubic-bezier(.16, .84, .44, 1) both;
+}
+@keyframes vt-eject {
+  to { transform: translateY(9%) scale(.965); opacity: 0; }
+}
+@keyframes vt-insert {
+  from { transform: translateY(-7%) scale(.975); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  @view-transition { navigation: none; }
+}
+html.rm::view-transition-old(root),
+html.rm::view-transition-new(root) { animation: none; }
 </style>
 
 <a class="skip-link" href="#main">Skip to content</a>

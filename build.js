@@ -86,6 +86,7 @@ if (fs.existsSync(driveSrc('01-style.html'))) {
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
+<script type="speculationrules">{"prerender":[{"urls":["../"],"eagerness":"moderate"}]}</script>
 </head>
 <body>
 ${driveBody}
@@ -122,6 +123,7 @@ const wrapped = `<!doctype html>
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <noscript><style>.boot{display:none}.fleet-wrap,.fleet-log,.fleet-actions{display:none}</style></noscript>
+<script type="speculationrules">{"prerender":[{"urls":["drive/"],"eagerness":"moderate"}]}</script>
 </head>
 <body>
 ${bodyHtml}

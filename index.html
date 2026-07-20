@@ -16,6 +16,7 @@
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <noscript><style>.boot{display:none}.fleet-wrap,.fleet-log,.fleet-actions{display:none}</style></noscript>
+<script type="speculationrules">{"prerender":[{"urls":["drive/"],"eagerness":"moderate"}]}</script>
 </head>
 <body>
 <style>
@@ -374,6 +375,10 @@ html.rm .hud .audio-btn.pulse { animation: none; }
 }
 .hud .np .np-inner { display: inline-block; padding-left: 100%; animation: npmarq 12s linear infinite; }
 .hud .np[hidden] { display: none; }
+/* During a Skywave intercept the numbers own the ticker: no marquee,
+   signal-cyan, wide enough for five groups */
+.hud .np.itc { color: var(--signal-cyan); max-width: 34ch; }
+.hud .np.itc .np-inner { animation: none; padding-left: 0; }
 @keyframes npmarq { to { transform: translateX(-100%); } }
 html.rm .hud .np .np-inner { animation: none; padding-left: 0; }
 .hud #hudCh.flash { color: var(--nav-acc, var(--osd-amber)); text-shadow: 0 0 10px currentColor; }
@@ -494,6 +499,34 @@ html.rm .hero-grid { animation: none; }
 .hero-palm.left { left: -34px; width: clamp(180px, 26vw, 330px); }
 .hero-palm.right { right: -30px; width: clamp(130px, 18vw, 230px); transform: scaleX(-1) translate(calc(var(--px, 0) * 10px), 0); }
 .hero-palm svg { width: 100%; height: auto; display: block; }
+
+/* ============================================================
+   EJECT SEQUENCE — cross-document View Transitions (Side A <-> B)
+   The flip link finally performs the physical act: this page drops
+   into the deck, the other side rises. Firefox ignores the at-rule
+   and gets today's plain navigation (true progressive enhancement).
+   Transform/opacity only.
+   ============================================================ */
+@view-transition { navigation: auto; }
+::view-transition-old(root) {
+  animation: vt-eject .3s cubic-bezier(.4, 0, .8, .6) both;
+}
+::view-transition-new(root) {
+  animation: vt-insert .38s cubic-bezier(.16, .84, .44, 1) both;
+}
+@keyframes vt-eject {
+  to { transform: translateY(9%) scale(.965); opacity: 0; }
+}
+@keyframes vt-insert {
+  from { transform: translateY(-7%) scale(.975); opacity: 0; }
+}
+/* Dual-path RM kill: OS setting disables the transition entirely… */
+@media (prefers-reduced-motion: reduce) {
+  @view-transition { navigation: none; }
+}
+/* …and the on-page FX toggle gets an instant cut. */
+html.rm::view-transition-old(root),
+html.rm::view-transition-new(root) { animation: none; }
 
 /* ---------- Hero content ---------- */
 .hero-content { position: relative; z-index: 2; max-width: 1080px; }
@@ -1309,6 +1342,282 @@ html.rm #carLane { display: none; }
 html.rm #carLane.rm-show { display: block; }
 
 /* ============================================================
+   CH 06 — THE TRAFFIC DESK (structured transmission intake)
+   ============================================================ */
+/* .nojs-actions is the no-JS twin of the desk's action row; html.js swaps
+   them (the desk and other JS-only chrome exist only under html.js).
+   NB: the head noscript block cannot hide elements that declare their own
+   display (it loses the cascade to this body stylesheet) — which is why
+   .boot and .fleet-actions are gated here too, fixing a latent no-JS bug
+   where the boot curtain never lifted. */
+html.js .tape-card .nojs-actions { display: none; }
+html:not(.js) .desk { display: none; }
+html:not(.js) .tt-panel { display: none; }
+html:not(.js) .rc-js { display: none; }
+html:not(.js) .boot { display: none; }
+html:not(.js) .fleet-actions { display: none; }
+.desk { margin-top: 4px; }
+.desk-class {
+  border: 1px solid rgba(255,204,0,.35);
+  padding: 12px 14px 10px; margin-bottom: 18px;
+  display: flex; gap: 10px; flex-wrap: wrap;
+}
+.desk-class legend {
+  font-family: var(--font-osd); font-size: 16px;
+  letter-spacing: .18em; text-transform: uppercase;
+  color: var(--osd-amber); padding: 0 8px;
+}
+.desk-class label { cursor: pointer; position: relative; }
+.desk-class input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.desk-class span {
+  display: inline-block;
+  font-family: var(--font-osd); font-size: 16px;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--chrome);
+  border: 1px solid rgba(233,237,245,.35);
+  padding: 5px 12px 2px;
+  transition: background .15s ease, color .15s ease;
+}
+.desk-class input:checked + span { color: var(--void); background: var(--osd-amber); border-color: var(--osd-amber); }
+.desk-class input:focus-visible + span { outline: 2px solid var(--signal-cyan); outline-offset: 3px; }
+.desk-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.desk-field {
+  display: block;
+  font-family: var(--font-osd); font-size: 15px;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: rgba(233,237,245,.75);
+  margin-bottom: 14px;
+}
+.desk-field input, .desk-field textarea {
+  display: block; width: 100%; margin-top: 6px;
+  background: rgba(11,0,26,.7); color: var(--osd-amber);
+  border: 1px solid rgba(255,204,0,.4); border-radius: 2px;
+  font-family: var(--font-osd); font-size: 18px; letter-spacing: .05em;
+  padding: 8px 10px 6px;
+}
+.desk-field input:focus-visible, .desk-field textarea:focus-visible {
+  outline: 2px solid var(--signal-cyan); outline-offset: 2px;
+}
+.desk-field textarea { resize: vertical; min-height: 110px; line-height: 1.4; text-transform: none; }
+.desk ::placeholder { color: rgba(255,204,0,.35); opacity: 1; }
+.desk-deck { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 4px 0 10px; }
+.desk-reels { width: 150px; height: auto; }
+.desk-vu { width: 90px; height: auto; }
+#deskTapeL, #deskTapeR { transform-box: fill-box; transform-origin: center; }
+.desk-tapecount { font-size: 16px; line-height: 1.5; }
+.desk-status {
+  font-family: var(--font-osd); font-size: 16px;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: rgba(0,242,255,.85);
+  min-height: 1.4em; margin-bottom: 12px;
+}
+.desk-status.hot { color: var(--osd-amber); }
+.btn-key {
+  background: rgba(11,0,26,.5); cursor: pointer;
+  border: 1px solid rgba(0,242,255,.5); color: var(--signal-cyan);
+  font-family: var(--font-osd); font-size: 16px;
+  letter-spacing: .12em; text-transform: uppercase;
+  padding: 10px 16px 7px;
+  transition: box-shadow .18s ease;
+}
+.btn-key:hover { box-shadow: 0 0 14px rgba(0,242,255,.4); }
+
+/* ============================================================
+   CH 07 — ACI TEXT (teletext service)
+   ============================================================ */
+.tt-set { max-width: 780px; margin: 0 auto; }
+.tt-screen {
+  position: relative;
+  background: #050014;
+  border: 2px solid rgba(51,255,51,.18);
+  border-radius: 10px;
+  padding: clamp(14px, 3vw, 26px) clamp(16px, 4vw, 40px) clamp(18px, 3vw, 30px);
+  font-family: var(--font-osd);
+  font-size: clamp(16px, 2.3vw, 21px);
+  line-height: 1.35;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  box-shadow: inset 0 0 70px rgba(20,0,200,.22), 0 24px 60px rgba(0,0,0,.55);
+  text-shadow: 1px 0 rgba(255,0,60,.22), -1px 0 rgba(0,120,255,.22);
+}
+.tt-head {
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  color: #f4f4ff;
+  border-bottom: 1px solid rgba(51,255,51,.25);
+  padding-bottom: 6px; margin-bottom: 16px;
+}
+.tt-pno { color: #ffe400; }
+.tt-pno.err { color: var(--red-rec); }
+.tt-clk { color: #00f2ff; font-variant-numeric: tabular-nums; }
+.tt-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.tt-page + .tt-page { margin-top: 40px; }
+.tt-set.live .tt-page + .tt-page { margin-top: 0; }
+.tt-set.live .tt-page[hidden] { display: none; }
+.tt-set.live .tt-screen { min-height: 29em; }
+.tt-page p { margin-bottom: 12px; max-width: 100%; }
+.tt-dh { font-size: 2em; line-height: 1.05; margin-bottom: 12px; }
+.tt-y { color: #ffe400; }
+.tt-c { color: #00f2ff; }
+.tt-g { color: #33ff33; }
+.tt-m { color: #ff5fff; }
+.tt-w { color: #f4f4ff; }
+.tt-b { display: inline-block; background: var(--boot-blue); color: #f4f4ff; padding: 2px 10px 0; }
+.tt-sep {
+  height: .55em; margin: 16px 0;
+  background: repeating-linear-gradient(90deg,
+    rgba(255,0,255,.8) 0 .6em, rgba(0,242,255,.8) .6em 1.2em,
+    rgba(255,228,0,.8) 1.2em 1.8em, transparent 1.8em 2.4em);
+}
+.tt-ix a {
+  display: flex; align-items: baseline; gap: 10px;
+  color: #f4f4ff; text-decoration: none; padding: 3px 0;
+}
+.tt-ix a:hover, .tt-ix a:focus-visible { color: #ffe400; }
+.tt-dots { flex: 1; border-bottom: 2px dotted rgba(51,255,51,.45); transform: translateY(-4px); }
+.tt-square {
+  font-family: var(--font-osd); font-size: 1em;
+  line-height: 1.55; letter-spacing: .18em;
+  background: rgba(20,0,200,.28);
+  display: inline-block; padding: 8px 16px; margin-bottom: 12px;
+  white-space: pre;
+}
+.tt-art { margin-bottom: 10px; }
+.tt-art svg { display: block; width: min(300px, 70%); height: auto; }
+.tt-hubs .tt-hubrow { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+.tt-hubs .tt-hubrow .h { color: #f4f4ff; min-width: 9ch; }
+.tt-hubs .tt-hubrow .t { color: #ffe400; min-width: 6ch; font-variant-numeric: tabular-nums; }
+.tt-hubs .tt-hubrow .c { color: #00f2ff; }
+.tt-panel {
+  display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+  justify-content: space-between; margin-top: 14px;
+}
+.tt-keys { display: grid; grid-template-columns: repeat(5, 46px); gap: 6px; }
+.tt-keys button {
+  height: 40px; cursor: pointer;
+  background: rgba(11,0,26,.7);
+  border: 1px solid rgba(51,255,51,.4); color: #33ff33;
+  font-family: var(--font-osd); font-size: 20px; padding-top: 3px;
+}
+.tt-keys button:hover { background: rgba(51,255,51,.12); }
+.tt-fast { display: flex; gap: 6px; flex-wrap: wrap; }
+.tt-fast button {
+  font-family: var(--font-osd); font-size: 15px;
+  letter-spacing: .08em; text-transform: uppercase;
+  cursor: pointer; border: none; color: #05000e;
+  padding: 9px 13px 5px;
+}
+.tt-fast button:hover { filter: brightness(1.15); }
+.fk-r { background: #ff2b2b; }
+.fk-g { background: #33ff33; }
+.fk-y { background: #ffe400; }
+.fk-b { background: #00a2ff; }
+.tt-hint { font-size: 15px; color: rgba(233,237,245,.55); width: 100%; }
+/* Decoder row-paint: rows pop in scanline order on page flip */
+.tt-set.live .tt-page.flip > * {
+  animation: ttrow .4s steps(2, end) both;
+  animation-delay: calc(var(--r, 0) * 42ms);
+}
+@keyframes ttrow { from { opacity: 0; } }
+html.rm .tt-set.live .tt-page.flip > * { animation: none; }
+
+/* ============================================================
+   THE REMOTE (Popover API; top layer, no z-index war)
+   ============================================================ */
+#remote {
+  position: fixed; inset: auto 18px 76px auto; margin: 0;
+  width: 258px;
+  background: linear-gradient(180deg, #1a1a24, #0c0c14);
+  border: 1px solid rgba(233,237,245,.2);
+  border-radius: 14px;
+  padding: 14px;
+  color: var(--chrome);
+  box-shadow: 0 30px 70px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.08);
+  opacity: 1; transform: none;
+  transition: opacity .22s ease, transform .22s ease,
+    display .22s allow-discrete, overlay .22s allow-discrete;
+}
+#remote:popover-open { display: flex; flex-direction: column; gap: 12px; }
+@starting-style {
+  #remote:popover-open { opacity: 0; transform: translateY(14px) scale(.97); }
+}
+#remote::backdrop { background: rgba(5,0,14,.3); }
+.rc-brand {
+  display: flex; justify-content: space-between; align-items: center;
+  font-family: var(--font-osd); font-size: 15px;
+  letter-spacing: .3em; text-transform: uppercase;
+  color: rgba(233,237,245,.6);
+}
+.rc-brand span:first-child { color: var(--neon-pink); }
+.rc-ir {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #2a0b0b; box-shadow: inset 0 0 4px #000;
+}
+.rc-ir.tx { background: var(--red-rec); box-shadow: 0 0 10px rgba(255,43,43,.9); }
+.rc-chans { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.rc-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.rc-key {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; padding: 7px 2px 5px;
+  background: #16161f;
+  border: 1px solid rgba(233,237,245,.18); border-radius: 8px;
+  cursor: pointer; text-decoration: none; color: var(--chrome);
+  box-shadow: 0 2px 0 rgba(0,0,0,.6);
+}
+.rc-key b { font-family: var(--font-osd); font-size: 18px; font-weight: 400; color: var(--osd-amber); line-height: 1.1; }
+.rc-key i { font-style: normal; font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: rgba(233,237,245,.55); }
+.rc-key:hover { border-color: var(--signal-cyan); }
+.rc-key:hover b { color: var(--signal-cyan); }
+.rc-key:active { transform: translateY(1px); box-shadow: 0 1px 0 rgba(0,0,0,.6); }
+.rc-codes {
+  display: flex; flex-direction: column; gap: 3px;
+  font-family: var(--font-osd); font-size: 14px;
+  letter-spacing: .06em; text-transform: uppercase;
+  color: rgba(233,237,245,.5);
+  border-top: 1px solid rgba(233,237,245,.12); padding-top: 9px;
+}
+.rc-codes-t { color: var(--osd-amber); letter-spacing: .25em; }
+
+/* ============================================================
+   TAPE REMAINING — zero-JS scroll-driven reel gauge (HUD)
+   Scroll position IS tape position. CSS scroll timelines only;
+   hidden entirely where unsupported so the HUD reads complete.
+   NB: animation-timeline must come AFTER the animation shorthand.
+   ============================================================ */
+.tapegauge { display: none; }
+@supports (animation-timeline: scroll()) {
+  @property --tgrem { syntax: '<integer>'; inherits: false; initial-value: 46; }
+  .tapegauge { display: inline-flex; align-items: center; gap: 7px; margin-left: 14px; vertical-align: -6px; }
+  .tapegauge svg { width: 58px; height: auto; display: block; }
+  .tg-tape, .tg-spin { transform-box: fill-box; transform-origin: center; }
+  .tg-supply .tg-tape {
+    animation: tgshrink 1s linear both;
+    animation-timeline: scroll(root);
+  }
+  .tg-takeup .tg-tape {
+    animation: tggrow 1s linear both;
+    animation-timeline: scroll(root);
+  }
+  .tg-spin {
+    animation: tgspin 1s linear both;
+    animation-timeline: scroll(root);
+  }
+  @keyframes tgshrink { to { transform: scale(.55); } }
+  @keyframes tggrow { from { transform: scale(.55); } to { transform: scale(1); } }
+  @keyframes tgspin { to { transform: rotate(3.5turn); } }
+  .tg-rem { font-size: .85em; }
+  .tg-rem::after {
+    counter-reset: tgrem var(--tgrem);
+    content: "REM 0:" counter(tgrem, decimal-leading-zero);
+    animation: tgcount 1s linear both;
+    animation-timeline: scroll(root);
+  }
+  @keyframes tgcount { from { --tgrem: 46; } to { --tgrem: 0; } }
+}
+html.rm .tapegauge .tg-tape,
+html.rm .tapegauge .tg-spin,
+html.rm .tapegauge .tg-rem::after { animation: none; }
+
+/* ============================================================
    RESPONSIVE
    ============================================================ */
 @media (max-width: 940px) {
@@ -1346,6 +1655,15 @@ html.rm #carLane.rm-show { display: block; }
   #carLane { bottom: 6px; height: 95px; }
   .hud .np { display: none; }
   .fleet-log { font-size: 16px; }
+  .tapegauge { display: none; }
+  .desk-row { grid-template-columns: 1fr; }
+  .tt-keys { grid-template-columns: repeat(5, 1fr); width: 100%; }
+  .tt-panel { justify-content: flex-start; }
+  #remote {
+    inset: auto 0 0 0; width: 100%;
+    border-radius: 14px 14px 0 0;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 /* Reduced motion: the look survives fully static.
@@ -1379,7 +1697,13 @@ html.rm #carLane.rm-show { display: block; }
   .m-ping { animation: none; transform: scale(.8); opacity: .3; }
   #carLane { display: none; }
   .car-underglow { animation: none; }
+  .tt-set.live .tt-page.flip > * { animation: none; }
+  .tapegauge .tg-tape, .tapegauge .tg-spin, .tapegauge .tg-rem::after { animation: none; }
+  #remote { transition: none; }
+  .desk-class span { transition: none; }
 }
+html.rm #remote { transition: none; }
+html.rm .desk-class span { transition: none; }
 </style>
 
 <a class="skip-link" href="#main">Skip to content</a>
@@ -1399,6 +1723,11 @@ html.rm #carLane.rm-show { display: block; }
    ~380KB document (map data included) finishes parsing. style.display, not
    [hidden]: the author-level display:flex would win over the hidden attr. */
 try { if (sessionStorage.getItem('aci_boot')) document.getElementById('boot').style.display = 'none'; } catch (e) {}
+/* Side B's html.js law, adopted: JS-only chrome (the traffic desk, the
+   teletext keypad, the remote's JS keys) gates on html.js so the no-JS
+   page never shows dead controls — the head noscript block can't do this
+   (it loses the cascade to the body stylesheet). */
+document.documentElement.classList.add('js');
 </script>
 
 <!-- FIXED FX LAYERS (decorative) -->
@@ -1418,16 +1747,61 @@ try { if (sessionStorage.getItem('aci_boot')) document.getElementById('boot').st
      toggles, and aria-hidden on an ancestor cannot be re-exposed by a
      descendant. Decorative readouts opt out individually instead. -->
 <div class="hud">
-  <div class="tl osd" aria-hidden="true"><span class="playglyph"></span>PLAY&nbsp;&nbsp;<span id="hudCh">CH 01</span></div>
+  <div class="tl osd" aria-hidden="true"><span class="playglyph"></span>PLAY&nbsp;&nbsp;<span id="hudCh">CH 01</span><span class="tapegauge">
+    <svg viewBox="0 0 66 24" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="1" width="64" height="22" rx="4" fill="rgba(11,0,26,.7)" stroke="rgba(255,204,0,.35)"/>
+      <g class="tg-reel tg-supply" transform="translate(16 12)">
+        <circle class="tg-tape" r="8" fill="none" stroke="rgba(255,204,0,.5)" stroke-width="4"/>
+        <g class="tg-spin"><circle r="3.4" fill="none" stroke="#ffcc00" stroke-width="1.2"/><line x1="0" y1="-3.4" x2="0" y2="3.4" stroke="#ffcc00" stroke-width="1.2"/></g>
+      </g>
+      <g class="tg-reel tg-takeup" transform="translate(50 12)">
+        <circle class="tg-tape" r="8" fill="none" stroke="rgba(255,204,0,.5)" stroke-width="4"/>
+        <g class="tg-spin"><circle r="3.4" fill="none" stroke="#ffcc00" stroke-width="1.2"/><line x1="0" y1="-3.4" x2="0" y2="3.4" stroke="#ffcc00" stroke-width="1.2"/></g>
+      </g>
+      <rect x="24" y="10" width="18" height="4" fill="rgba(255,204,0,.3)"/>
+    </svg>
+    <span class="tg-rem"></span>
+  </span></div>
   <div class="tr osd" aria-hidden="true"><span class="sp">SP &middot; </span><span id="hudCounter">0:00:00</span></div>
   <div class="bl osd" id="hudClock" aria-hidden="true">--:--:--</div>
   <div class="br osd">
     <span class="np" id="npTicker" hidden><span class="np-inner" id="npText"></span></span>
     <button class="audio-btn" id="fxBtn" aria-pressed="false" aria-label="Toggle visual effects">FX [On]</button>
     <button class="audio-btn" id="audioBtn" aria-pressed="false" aria-label="Toggle radio: ACI Skywave 99.9 FM">FM 99.9 [Tune]</button>
+    <button class="audio-btn" id="remoteBtn" popovertarget="remote" aria-label="Open remote control">RC [&#9636;]</button>
     <span id="recWrap" aria-hidden="true"><span class="recdot"></span>REC</span>
   </div>
   <div class="autotrack osd" id="autotrack" aria-hidden="true">Auto Tracking</div>
+</div>
+
+<!-- THE REMOTE — top-layer VCR remote (Popover API). The declarative
+     popovertarget pair works without JS; channel keys are real anchors that
+     ride the existing data-ch nav delegation. JS-only keys carry .rc-js and
+     sit on the build's noscript hiding list. -->
+<div id="remote" popover aria-label="ACI remote control">
+  <div class="rc-brand" aria-hidden="true"><span>ACI</span> RC-86 <span class="rc-ir"></span></div>
+  <div class="rc-chans">
+    <a class="rc-key" href="#top" data-ch="CH 01" data-name="SIGNAL"><b>1</b><i>Signal</i></a>
+    <a class="rc-key" href="#fleet" data-ch="CH 02" data-name="FLEET TRACKER"><b>2</b><i>Fleet</i></a>
+    <a class="rc-key" href="#ethos" data-ch="CH 03" data-name="THE ETHOS"><b>3</b><i>Ethos</i></a>
+    <a class="rc-key" href="#channels" data-ch="CH 04" data-name="CHANNELS"><b>4</b><i>Chans</i></a>
+    <a class="rc-key" href="#operator" data-ch="CH 05" data-name="THE OPERATOR"><b>5</b><i>Oprtr</i></a>
+    <a class="rc-key" href="#contact" data-ch="CH 06" data-name="TRANSMISSION"><b>6</b><i>Contact</i></a>
+    <a class="rc-key" href="#text" data-ch="CH 07" data-name="ACI TEXT"><b>7</b><i>Text</i></a>
+  </div>
+  <div class="rc-row">
+    <button type="button" class="rc-key rc-js" id="rcRew" aria-label="Rewind to top"><b>&#9664;&#9664;</b><i>Rew</i></button>
+    <a class="rc-key" href="drive/" aria-label="Eject: flip to Side B"><b>&#9167;</b><i>Side B</i></a>
+    <button type="button" class="rc-key rc-js" id="rcFx" aria-label="Toggle visual effects"><b>FX</b><i>Effects</i></button>
+    <button type="button" class="rc-key rc-js" id="rcFm" aria-label="Toggle radio"><b>FM</b><i>99.9</i></button>
+    <button type="button" class="rc-key rc-js" id="rcShare" aria-label="Share current channel"><b>&#8599;</b><i>Share</i></button>
+  </div>
+  <div class="rc-codes">
+    <span class="rc-codes-t">Codes</span>
+    <span>&#8593;&#8593;&#8595;&#8595;&#8592;&#8594;&#8592;&#8594;BA &mdash; the car</span>
+    <span>Tap REC &times;3 &mdash; same, no keyboard</span>
+    <span>TEXT P888 &mdash; and then listen</span>
+  </div>
 </div>
 
 <!-- NAV -->
@@ -1439,6 +1813,7 @@ try { if (sessionStorage.getItem('aci_boot')) document.getElementById('boot').st
   <a href="#channels" data-ch="CH 04" data-name="CHANNELS">Channels</a>
   <a href="#operator" data-ch="CH 05" data-name="THE OPERATOR">Operator</a>
   <a href="#contact" data-ch="CH 06" data-name="TRANSMISSION">Contact</a>
+  <a href="#text" data-ch="CH 07" data-name="ACI TEXT">Text</a>
 </nav>
 
 <div class="page" id="page">
@@ -1687,14 +2062,238 @@ try { if (sessionStorage.getItem('aci_boot')) document.getElementById('boot').st
           <p>Tell us where you want to go, or who you need to meet, and we will take it from there.</p>
           <a class="email" href="mailto:contactandrewcalebintl@gmail.com">contactandrewcalebintl@gmail.com</a><button class="copy-email" id="copyEmail" type="button" aria-label="Copy email address">[Copy]</button>
         </div>
-        <div class="actions">
-          <a class="btn-rec" id="btnRec" href="mailto:contactandrewcalebintl@gmail.com"><span class="dot" aria-hidden="true"></span>Press Rec</a>
+        <!-- The Traffic Desk: JS-only enhancement over the always-working
+             mailto above (hidden by the build's noscript list). It composes
+             the mailto live; it never claims to "send" anything itself. -->
+        <form class="desk" id="deskForm">
+          <fieldset class="desk-class">
+            <legend>Traffic class</legend>
+            <label><input type="radio" name="tclass" value="PROSPECT" checked><span>Prospect</span></label>
+            <label><input type="radio" name="tclass" value="VENTURE"><span>Venture</span></label>
+            <label><input type="radio" name="tclass" value="PRESS"><span>Press</span></label>
+            <label><input type="radio" name="tclass" value="OTHER"><span>Other</span></label>
+          </fieldset>
+          <div class="desk-row">
+            <label class="desk-field">From / Callsign
+              <input id="deskFrom" type="text" maxlength="60" autocomplete="name" placeholder="Optional">
+            </label>
+            <label class="desk-field">Codeword
+              <input id="deskCode" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="If the radio gave you one">
+            </label>
+          </div>
+          <label class="desk-field desk-msgfield">Message
+            <textarea id="deskMsg" maxlength="1400" rows="5" placeholder="Where do you want to go? Who do you need to meet?"></textarea>
+          </label>
+          <div class="desk-deck" aria-hidden="true">
+            <svg class="desk-reels" viewBox="0 0 150 44" xmlns="http://www.w3.org/2000/svg">
+              <rect x="1" y="1" width="148" height="42" rx="6" fill="rgba(11,0,26,.75)" stroke="rgba(255,204,0,.3)"/>
+              <g transform="translate(34 22)">
+                <circle id="deskTapeL" r="15" fill="none" stroke="rgba(255,204,0,.45)" stroke-width="7"/>
+                <g id="deskReelL"><circle r="6" fill="none" stroke="#ffcc00" stroke-width="1.4"/><line x1="0" y1="-6" x2="0" y2="6" stroke="#ffcc00" stroke-width="1.4"/><line x1="-6" y1="0" x2="6" y2="0" stroke="#ffcc00" stroke-width="1.4"/></g>
+              </g>
+              <g transform="translate(116 22)">
+                <circle id="deskTapeR" r="8" fill="none" stroke="rgba(255,204,0,.45)" stroke-width="7"/>
+                <g id="deskReelR"><circle r="6" fill="none" stroke="#ffcc00" stroke-width="1.4"/><line x1="0" y1="-6" x2="0" y2="6" stroke="#ffcc00" stroke-width="1.4"/><line x1="-6" y1="0" x2="6" y2="0" stroke="#ffcc00" stroke-width="1.4"/></g>
+              </g>
+              <rect x="56" y="19" width="38" height="6" fill="rgba(255,204,0,.25)"/>
+            </svg>
+            <svg class="desk-vu" viewBox="0 0 90 44" xmlns="http://www.w3.org/2000/svg">
+              <rect x="1" y="1" width="88" height="42" rx="6" fill="rgba(11,0,26,.75)" stroke="rgba(255,204,0,.3)"/>
+              <path d="M12 36 A36 36 0 0 1 78 36" fill="none" stroke="rgba(255,204,0,.35)" stroke-width="2"/>
+              <path d="M64 15 A36 36 0 0 1 78 36" fill="none" stroke="rgba(255,43,43,.6)" stroke-width="2"/>
+              <line id="deskNeedle" x1="45" y1="36" x2="45" y2="8" stroke="#ffcc00" stroke-width="2"/>
+              <circle cx="45" cy="36" r="3" fill="#ffcc00"/>
+              <text x="45" y="42" text-anchor="middle" font-size="7" fill="rgba(255,204,0,.7)" font-family="monospace">VU</text>
+            </svg>
+            <span class="desk-tapecount osd"><span id="deskRem">TAPE REM 1:30</span><br><span id="deskRef">REF --</span></span>
+          </div>
+          <p class="desk-status" id="deskStatus" aria-live="polite" role="status">Blank tape. Route your traffic and record.</p>
+          <div class="actions">
+            <a class="btn-rec" id="btnRec" href="mailto:contactandrewcalebintl@gmail.com"><span class="dot" aria-hidden="true"></span>Press Rec</a>
+            <button type="button" class="btn-key" id="copyTx">[Copy Transmission]</button>
+            <button type="button" class="btn-key" id="ejectCard" aria-label="Eject contact card: download vCard">&#9167; Eject Contact Card</button>
+            <div class="barcode" aria-hidden="true"></div>
+          </div>
+        </form>
+        <div class="actions nojs-actions">
+          <a class="btn-rec" href="mailto:contactandrewcalebintl@gmail.com"><span class="dot" aria-hidden="true"></span>Press Rec</a>
           <div class="barcode" aria-hidden="true"></div>
         </div>
       </div>
     </div>
   </div>
   <p class="tape-micro">All transmissions answered. No exceptions.</p>
+</section>
+
+<!-- ============ CH 07 : ACI TEXT (teletext service) ============ -->
+<!-- Pages are real stacked articles: with no JS this section reads top to
+     bottom as a plain document. The JS module collapses it into a one-page
+     decoder with dialed page numbers; the keypad (.tt-panel) is JS-only and
+     sits on the build's noscript hiding list. -->
+<section class="channel" id="text" data-ch="CH 07" data-name="ACI TEXT" data-accent="#33ff33">
+  <span class="ch-tab">CH 07 &middot; ACI Text</span>
+  <h2 class="section-title">The Company Pages</h2>
+  <p class="section-kicker">Who we are and how to engage us, broadcast the 1986 way. Dial a page number on the keypad or your keyboard, or ride the colour keys.</p>
+  <div class="tt-set">
+    <div class="tt-screen" id="ttScreen">
+      <div class="tt-head" aria-hidden="true">
+        <span class="tt-pno" id="ttPno">P100</span>
+        <span class="tt-svc">ACI TEXT</span>
+        <span class="tt-clk" id="ttClk">--:--:--</span>
+      </div>
+      <span class="tt-status" id="ttStatus" aria-live="polite"></span>
+
+      <article class="tt-page" id="tt-100" data-page="100" data-pname="Index">
+        <div class="tt-art" aria-hidden="true"></div>
+        <p class="tt-dh tt-y">ANDREW CALEB INTL</p>
+        <p class="tt-c">GO ANYWHERE &middot; MEET ANYONE</p>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <nav class="tt-ix" aria-label="Teletext index">
+          <a href="#tt-200">CAPABILITIES<span class="tt-dots" aria-hidden="true"></span>200</a>
+          <a href="#tt-300">THE OPERATOR<span class="tt-dots" aria-hidden="true"></span>300</a>
+          <a href="#tt-400">ENGAGEMENT TERMS<span class="tt-dots" aria-hidden="true"></span>400</a>
+          <a href="#tt-500">HUBS TODAY<span class="tt-dots" aria-hidden="true"></span>500</a>
+          <a href="#tt-600">OPEN A LINE<span class="tt-dots" aria-hidden="true"></span>600</a>
+        </nav>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <p class="tt-g">AN INTERNATIONAL PROSPECTING COMPANY.
+        WE FIND MARKETS, PARTNERS, PROPERTIES
+        AND PEOPLE BEFORE THE REST OF THE
+        WORLD KNOWS THEY ARE AVAILABLE.</p>
+        <p class="tt-w">SEVEN STATIONS. THREE OCEANS. ONE
+        SIGNAL. THESE PAGES ARE THE PAPERWORK.</p>
+      </article>
+
+      <article class="tt-page" id="tt-200" data-page="200" data-pname="Capabilities">
+        <p class="tt-dh tt-y">CAPABILITIES</p>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <p class="tt-w">1/ MARKET ENTRY + FIRST CONTACT</p>
+        <p class="tt-c">WE LAND FIRST. GROUND TRUTH, LOCAL
+        PLAYERS AND THE PRICE OF THE ROOM,
+        REPORTED BEFORE CAPITAL MOVES.</p>
+        <p class="tt-w">2/ SOURCING + ACQUISITION</p>
+        <p class="tt-c">PROPERTIES, INVENTORY, INSTRUMENTS,
+        INTRODUCTIONS. YOU NAME THE TARGET.
+        WE NAME THE HOLDER AND THE TERMS.</p>
+        <p class="tt-w">3/ INTRODUCTIONS + BROKERAGE</p>
+        <p class="tt-c">THE RIGHT CHAIR AT THE RIGHT TABLE.
+        WE DEAL ONLY IN WARM HANDOFFS.</p>
+        <p class="tt-w">4/ EXPEDITION + LOGISTICS</p>
+        <p class="tt-c">ROUTES, PERMITS, GROUND CREWS AND
+        QUIET FREIGHT IN PLACES THE COURIER
+        APPS HAVE NEVER HEARD OF.</p>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <p class="tt-g">TO ENGAGE ANY OF THE ABOVE ... P600</p>
+      </article>
+
+      <article class="tt-page" id="tt-300" data-page="300" data-pname="The Operator">
+        <p class="tt-dh tt-y">THE OPERATOR</p>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <p class="tt-c">CALEB, ANDREW. CALLSIGN SKYWAVE.
+        COLLECTS HANDSHAKES THE WAY OTHER
+        PEOPLE COLLECT PASSPORT STAMPS.</p>
+        <p class="tt-c">HE IS THE CALL YOU MAKE WHEN THE
+        OPPORTUNITY IS REAL BUT THE PATH
+        TO IT IS NOT. WHICH FLIGHT, WHICH
+        FLOOR, WHICH CHAIR AT THE TABLE.</p>
+        <p class="tt-w">STATUS ........ ACTIVE</p>
+        <p class="tt-w">COVERAGE ...... WORLDWIDE</p>
+        <p class="tt-w">LOCATION ...... [REDACTED]</p>
+        <p class="tt-w">LANGUAGES ..... ENOUGH</p>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <p class="tt-m">"EVERYTHING IS REACHABLE. MOST
+        PEOPLE JUST STOP DIALING."</p>
+        <p class="tt-g">FULL DOSSIER ON CH 05 &middot; UPLINK P600</p>
+      </article>
+
+      <article class="tt-page" id="tt-400" data-page="400" data-pname="Engagement Terms">
+        <p class="tt-dh tt-y">ENGAGEMENT TERMS</p>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <p class="tt-w">1. THE BRIEF</p>
+        <p class="tt-c">YOU STATE THE OBJECTIVE AND THE
+        TERRITORY. ONE PAGE IS PLENTY.</p>
+        <p class="tt-w">2. THE SWEEP</p>
+        <p class="tt-c">WE GO. WE LOOK. WE ASK THE PEOPLE
+        WHO ACTUALLY KNOW.</p>
+        <p class="tt-w">3. THE FINDINGS</p>
+        <p class="tt-c">NAMES, NUMBERS, TERMS AND A
+        RECOMMENDATION. SIGNAL, NO NOISE.</p>
+        <p class="tt-w">4. THE CLOSE</p>
+        <p class="tt-c">INTRODUCTIONS MADE IN PERSON.
+        WE STAY UNTIL THE HANDS SHAKE.</p>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <p class="tt-m">DISCRETION IS NOT A SERVICE TIER.
+        IT IS THE HOUSE CONDITION.</p>
+        <p class="tt-g">RATES ON APPLICATION ....... P600</p>
+      </article>
+
+      <article class="tt-page" id="tt-500" data-page="500" data-pname="Hubs Today">
+        <p class="tt-dh tt-y">HUBS TODAY</p>
+        <p class="tt-b" id="ttDay">CONDITIONS REFRESH DAILY</p>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <div class="tt-hubs" id="ttHubs">
+          <p class="tt-c">NEW YORK &middot; LONDON &middot; DUBAI &middot; TOKYO
+          &middot; SYDNEY &middot; CAPE TOWN &middot; AMAZONIA:
+          LOCAL TIME AND FIELD CONDITIONS AT
+          ALL SEVEN STATIONS, UPDATED DAILY
+          ON THIS PAGE.</p>
+        </div>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <p class="tt-g">FLEET POSITIONS LIVE ON CH 02</p>
+      </article>
+
+      <article class="tt-page" id="tt-600" data-page="600" data-pname="Open a Line">
+        <p class="tt-dh tt-y">OPEN A LINE</p>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <p class="tt-c">THE DESK ACCEPTS TRAFFIC IN FOUR
+        CLASSES: PROSPECT, VENTURE, PRESS,
+        OTHER. ROUTE YOURS AND RECORD.</p>
+        <p class="tt-w">WIRE ..... CONTACTANDREWCALEBINTL
+        @GMAIL.COM</p>
+        <p class="tt-w">DESK ..... CH 06 TRANSMISSION</p>
+        <p class="tt-c">EVERY TRANSMISSION IS FILED UNDER
+        THE DAY'S REF NUMBER AND ANSWERED.
+        NO EXCEPTIONS.</p>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <p class="tt-ix"><a href="#contact" data-ch="CH 06" data-name="TRANSMISSION">GO TO THE TRAFFIC DESK &#9654;</a></p>
+      </article>
+
+      <article class="tt-page" id="tt-888" data-page="888" data-pname="Cipher Desk">
+        <p class="tt-dh tt-m">CIPHER DESK</p>
+        <p class="tt-b">NOT LISTED IN THE INDEX. GOOD.</p>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <p class="tt-c">AFTER DARK, SKYWAVE 99.9 SOMETIMES
+        CARRIES NUMBERS. FIVE GROUPS, TWO
+        FIGURES EACH. READ ROW THEN COLUMN
+        AGAINST THE SQUARE BELOW.</p>
+        <pre class="tt-square tt-w" aria-label="Cipher square">
+    1 2 3 4 5
+  1 A B C D E
+  2 F G H I K
+  3 L M N O P
+  4 Q R S T U
+  5 V W X Y Z</pre>
+        <p class="tt-c">J FILES UNDER I. THE WORD CHANGES
+        WITH THE BROADCAST DAY.</p>
+        <p class="tt-g">SPEAK THE WORD TO THE TRAFFIC DESK
+        CODEWORD FIELD. WE WILL KNOW YOU
+        WERE REALLY LISTENING.</p>
+      </article>
+    </div>
+    <div class="tt-panel">
+      <div class="tt-keys" role="group" aria-label="Teletext keypad">
+        <button type="button" data-d="1">1</button><button type="button" data-d="2">2</button><button type="button" data-d="3">3</button><button type="button" data-d="4">4</button><button type="button" data-d="5">5</button>
+        <button type="button" data-d="6">6</button><button type="button" data-d="7">7</button><button type="button" data-d="8">8</button><button type="button" data-d="9">9</button><button type="button" data-d="0">0</button>
+      </div>
+      <div class="tt-fast" role="group" aria-label="Colour keys">
+        <button type="button" class="fk-r" data-go="100">Index</button>
+        <button type="button" class="fk-g" data-go="200">Services</button>
+        <button type="button" class="fk-y" data-go="500">Today</button>
+        <button type="button" class="fk-b" data-go="600">Contact</button>
+      </div>
+      <p class="tt-hint osd" aria-hidden="true">Key a page number &middot; 100&ndash;600</p>
+    </div>
+  </div>
 </section>
 </main>
 
@@ -1849,14 +2448,16 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
     fxBtn.textContent = RM ? 'FX [Off]' : 'FX [On]';
     fxBtn.setAttribute('aria-pressed', RM ? 'false' : 'true');
   }
+  /* Named so the remote's FX key can share the exact same path */
+  function toggleFx() {
+    RM = !RM;
+    document.documentElement.classList.toggle('rm', RM);
+    store.set('aci_fx', RM ? '0' : '1');
+    applyFxUI();
+  }
   if (fxBtn) {
     applyFxUI();
-    fxBtn.addEventListener('click', function () {
-      RM = !RM;
-      document.documentElement.classList.toggle('rm', RM);
-      store.set('aci_fx', RM ? '0' : '1');
-      applyFxUI();
-    });
+    fxBtn.addEventListener('click', toggleFx);
   }
 
   /* ---------- HUD clock + tape counter ---------- */
@@ -2396,6 +2997,7 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
     }
   }
   function npUpdate() {
+    if (intercepting) return; /* the numbers station owns the ticker */
     if (npText) npText.textContent = 'NOW PLAYING: ' + TRACK_DEFS[trackIdx].title + ' · ACI SKYWAVE 99.9';
   }
   function radioOn() {
@@ -2409,6 +3011,7 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
     trackTimer = setInterval(function () {
       pendingTrack = (trackIdx + 1) % TRACK_DEFS.length;
     }, 75000);
+    itcArm();
   }
   /* Debug/tuning hook: skip to the next record immediately */
   window.__aciSkipTrack = function () {
@@ -2420,6 +3023,7 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
   function radioOff() {
     clearInterval(radioTimer); radioTimer = null;
     clearInterval(trackTimer); trackTimer = null;
+    itcDisarm();
     if (musicBus) musicBus.gain.setTargetAtTime(0.0001, audioCtx.currentTime, 0.1);
     /* Kill the hiss floor too, then suspend so "off" really stops rendering
        (battery, OS audio session) once the fades have finished. */
@@ -3365,6 +3969,544 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
       if (!document.hidden) driveBy(false);
       schedCar();
     }, 45000 + Math.random() * 45000);
+  })();
+
+  /* ============================================================
+     BROADCAST-DAY SEED — shared by ACI TEXT P500, the traffic
+     desk's REF numbers, and the numbers station. Everyone on the
+     same UTC day sees the same paperwork.
+     ============================================================ */
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function daySeed(offsetDays) {
+    var d = new Date();
+    d.setUTCDate(d.getUTCDate() + (offsetDays || 0));
+    return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+  }
+  function broadcastDay() {
+    return Math.floor((Date.now() - Date.UTC(2026, 0, 1)) / 86400000) + 1;
+  }
+  /* Always five letters (P888 promises FIVE GROUPS), never a J: the
+     cipher square files J under I */
+  var ITC_WORDS = ['ATLAS', 'CARGO', 'COAST', 'CROWN', 'DELTA', 'EMBER',
+    'FLEET', 'GHOST', 'HAVEN', 'INDEX', 'NIGHT', 'OASIS', 'ORBIT', 'PEARL',
+    'RADIO', 'ROUTE', 'SIREN', 'TIDAL', 'VAPOR', 'WHARF'];
+  function codewordFor(offsetDays) {
+    var r = mulberry32(daySeed(offsetDays));
+    return ITC_WORDS[(r() * ITC_WORDS.length) | 0];
+  }
+  function refNum() {
+    var r = mulberry32(daySeed(0) ^ 0x5EED);
+    return '86-' + (1000 + ((r() * 9000) | 0));
+  }
+
+  /* ============================================================
+     SKYWAVE INTERCEPT — the numbers station. Once in a rare while
+     the record ducks, an interval signal plays, and five two-figure
+     groups march across the ticker. They decode against the square
+     on ACI TEXT P888 into the broadcast day's codeword; the traffic
+     desk knows the word. Radio-off visitors get the P888 breadcrumb
+     and the fleet-log line instead — the loop has a silent path.
+     ============================================================ */
+  var intercepting = false;
+  var itcTimer = null;
+  var ITC_SQUARE = 'ABCDEFGHIKLMNOPQRSTUVWXYZ';
+  function itcGroups(word) {
+    var g = [];
+    for (var i = 0; i < word.length; i++) {
+      var ix = ITC_SQUARE.indexOf(word[i] === 'J' ? 'I' : word[i]);
+      if (ix !== -1) g.push(String(((ix / 5) | 0) + 1) + String((ix % 5) + 1));
+    }
+    return g;
+  }
+  function itcArm() {
+    if (itcTimer) return;
+    (function sched() {
+      itcTimer = setTimeout(function () {
+        if (AE.on && !document.hidden && !intercepting && radioTimer) intercept();
+        sched();
+      }, 240000 + Math.random() * 180000);
+    })();
+  }
+  function itcDisarm() { clearTimeout(itcTimer); itcTimer = null; }
+  /* Debug/impatient-listener hook */
+  window.__aciIntercept = function () {
+    if (!AE.on) return 'radio off';
+    intercept();
+    return 'transmitting';
+  };
+  function itcBeep(t, d) {
+    /* one spoken figure = a dual-sine pair, pitched by digit */
+    [700 + d * 38, 1180 + d * 52].forEach(function (f) {
+      var o = audioCtx.createOscillator(); o.type = 'sine'; o.frequency.value = f;
+      var g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.09, t + 0.012);
+      g.gain.setValueAtTime(0.09, t + 0.1);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+      o.connect(g); g.connect(sfxBus);
+      o.start(t); o.stop(t + 0.2);
+    });
+  }
+  function intercept() {
+    if (intercepting || !audioCtx) return;
+    intercepting = true;
+    var t0 = audioCtx.currentTime + 0.1;
+    var groups = itcGroups(codewordFor(0));
+    musicBus.gain.setTargetAtTime(0.07, t0, 0.6);
+    /* carrier static bed */
+    var bed = audioCtx.createBufferSource(); bed.buffer = noiseBuf; bed.loop = true;
+    var bp = audioCtx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1900; bp.Q.value = 0.5;
+    var bg = audioCtx.createGain();
+    bg.gain.setValueAtTime(0.0001, t0);
+    bg.gain.linearRampToValueAtTime(0.045, t0 + 1.4);
+    bed.connect(bp); bp.connect(bg); bg.connect(sfxBus);
+    /* interval signal: a lonely minor motif, twice */
+    [0, 1.4].forEach(function (off) {
+      ['E5', 'G5', 'E5', 'C5'].forEach(function (n, i) {
+        var t = t0 + 1.2 + off + i * 0.3;
+        var o = audioCtx.createOscillator(); o.type = 'sine'; o.frequency.value = freq(n);
+        var g = audioCtx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(0.07, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.26);
+        o.connect(g); g.connect(sfxBus);
+        o.start(t); o.stop(t + 0.3);
+      });
+    });
+    /* the groups */
+    var t = t0 + 4.6;
+    var tickerSteps = [];
+    groups.forEach(function (grp) {
+      itcBeep(t, +grp[0]); t += 0.34;
+      itcBeep(t, +grp[1]); t += 0.34;
+      tickerSteps.push({ at: t - t0, txt: grp });
+      t += 0.5;
+    });
+    var tEnd = t + 0.6;
+    bg.gain.setValueAtTime(0.045, tEnd - 0.5);
+    bg.gain.linearRampToValueAtTime(0.0001, tEnd);
+    bed.start(t0); bed.stop(tEnd + 0.1);
+    /* ticker narration, marching with the audio (ownership flag keeps
+       npUpdate out until the transmission ends) */
+    if (npTicker) npTicker.classList.add('itc');
+    var setTick = function (txt) { if (npText) npText.textContent = txt; };
+    setTick('… SIGNAL DRIFT — STAND BY …');
+    setTimeout(function () { setTick('SKYWAVE INTERCEPT ▸'); }, 1300);
+    var shown = [];
+    tickerSteps.forEach(function (s) {
+      setTimeout(function () {
+        shown.push(s.txt);
+        setTick('SKYWAVE INTERCEPT ▸ ' + shown.join(' · '));
+      }, Math.round(s.at * 1000));
+    });
+    setTimeout(function () { setTick('… MSG ENDS · TEXT P888 …'); }, Math.round((tEnd - t0) * 1000));
+    setTimeout(function () {
+      intercepting = false;
+      if (npTicker) npTicker.classList.remove('itc');
+      if (AE.on) {
+        musicBus.gain.setTargetAtTime(0.5, audioCtx.currentTime, 0.5);
+        npUpdate();
+      }
+      if (window.__aciLog) window.__aciLog('INTERCEPT LOGGED, SEE TEXT P888');
+    }, Math.round((tEnd - t0) * 1000) + 2600);
+  }
+
+  /* ============================================================
+     CH 07 — ACI TEXT (teletext decoder)
+     No JS: the pages read stacked, top to bottom. With JS the set
+     goes live: one page at a time, dialed by keypad, keyboard
+     digits (only while the set is on screen and no field has
+     focus), colour keys, or index links.
+     ============================================================ */
+  (function () {
+    var set = $('.tt-set');
+    var screen = $('#ttScreen');
+    if (!set || !screen) return;
+    var pno = $('#ttPno'), clk = $('#ttClk'), ttStatus = $('#ttStatus');
+    var pages = $$('.tt-page');
+    var byNum = {};
+    var cur = '100';
+    set.classList.add('live');
+    pages.forEach(function (p) {
+      byNum[p.dataset.page] = p;
+      /* row indexes drive the scanline-order paint */
+      Array.prototype.slice.call(p.children).forEach(function (row, i) {
+        row.style.setProperty('--r', i);
+      });
+      if (p.dataset.page !== cur) p.hidden = true;
+    });
+
+    /* P100 mosaic wordmark, decoded like a SAA5050 would */
+    var art = screen.querySelector('.tt-art');
+    if (art) {
+      var ROWS = [
+        '.###...####..###',
+        '#...#.#.......#.',
+        '#####.#.......#.',
+        '#...#.#.......#.',
+        '#...#..####..###'
+      ];
+      var COLS = ['#ff5fff', '#ff5fff', '#f4f4ff', '#00f2ff', '#00f2ff'];
+      var NS = 'http://www.w3.org/2000/svg';
+      var svg = document.createElementNS(NS, 'svg');
+      svg.setAttribute('viewBox', '0 0 ' + ROWS[0].length * 8 + ' ' + ROWS.length * 8);
+      ROWS.forEach(function (row, y) {
+        for (var x = 0; x < row.length; x++) {
+          if (row[x] !== '#') continue;
+          var r = document.createElementNS(NS, 'rect');
+          r.setAttribute('x', x * 8); r.setAttribute('y', y * 8);
+          r.setAttribute('width', 7.2); r.setAttribute('height', 7.2);
+          r.setAttribute('fill', COLS[y]);
+          svg.appendChild(r);
+        }
+      });
+      art.appendChild(svg);
+    }
+
+    var visible = false;
+    try {
+      var tio = new IntersectionObserver(function (es) {
+        es.forEach(function (en) { visible = en.isIntersecting; });
+      }, { threshold: 0.2 });
+      tio.observe($('#text'));
+    } catch (e) { visible = true; }
+
+    var errT = null;
+    function show(num) {
+      var p = byNum[num];
+      if (!p) {
+        pno.textContent = 'P' + num;
+        pno.classList.add('err');
+        if (ttStatus) ttStatus.textContent = 'Page ' + num + ' not in service';
+        clearTimeout(errT);
+        errT = setTimeout(function () {
+          pno.classList.remove('err');
+          pno.textContent = 'P' + cur;
+        }, 950);
+        return;
+      }
+      pno.classList.remove('err');
+      if (num === cur) { pno.textContent = 'P' + cur; return; }
+      byNum[cur].hidden = true;
+      byNum[cur].classList.remove('flip');
+      cur = num;
+      p.hidden = false;
+      if (!RM) {
+        /* restart the row paint even on quick re-visits */
+        p.classList.remove('flip');
+        void p.offsetWidth;
+        p.classList.add('flip');
+      }
+      pno.textContent = 'P' + cur;
+      if (num === '500') hubsRefresh();
+      if (AE.blip) AE.blip();
+      if (ttStatus) ttStatus.textContent = 'Page ' + num + ': ' + (p.dataset.pname || '');
+    }
+
+    var buf = '';
+    function key(d) {
+      buf += d;
+      pno.textContent = 'P' + buf + new Array(4 - buf.length).join('-');
+      if (buf.length === 3) { var n = buf; buf = ''; show(n); }
+    }
+    $$('.tt-keys button').forEach(function (b) {
+      b.addEventListener('click', function () { key(b.dataset.d); });
+    });
+    $$('.tt-fast button').forEach(function (b) {
+      b.addEventListener('click', function () { buf = ''; show(b.dataset.go); });
+    });
+    document.addEventListener('keydown', function (e) {
+      if (!visible || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+      var t = e.target;
+      if (t && t.closest && t.closest('input, textarea, select, [contenteditable], #remote')) return;
+      if (e.key >= '0' && e.key <= '9') key(e.key);
+    });
+    /* index links flip pages instead of jumping down the stack */
+    screen.addEventListener('click', function (e) {
+      var a = e.target.closest ? e.target.closest('a[href^="#tt-"]') : null;
+      if (!a) return;
+      e.preventDefault();
+      buf = '';
+      show(a.getAttribute('href').slice(4));
+    });
+
+    /* header clock, ticking only while the set is on screen */
+    setInterval(function () {
+      if (!visible || document.hidden || !clk) return;
+      var d = new Date();
+      clk.textContent = pad(d.getHours()) + ':' + pad(d.getMinutes()) + '/' + pad(d.getSeconds());
+    }, 1000);
+
+    /* P500 — real local times, date-seeded field conditions */
+    var HUBTZ = [
+      ['NEW YORK', 'America/New_York'],
+      ['AMAZONIA', 'America/Manaus'],
+      ['LONDON', 'Europe/London'],
+      ['CAPE TOWN', 'Africa/Johannesburg'],
+      ['DUBAI', 'Asia/Dubai'],
+      ['TOKYO', 'Asia/Tokyo'],
+      ['SYDNEY', 'Australia/Sydney']
+    ];
+    var COND = [
+      'ALL LANES OPEN', 'MARKET BRISK', 'CUSTOMS SLOW — ALLOW 2 DAYS',
+      'FIXER ON STANDBY', 'HARBOR FOG TO NOON', 'GOOD WINDOW FOR INTROS',
+      'PAPERWORK MOVING', 'QUIET. TOO QUIET', 'TIDE WINDOW OPEN',
+      'BACKCHANNEL ACTIVE', 'HOLD FOR LOCAL HOLIDAY', 'SIGNAL FIVE BY FIVE'
+    ];
+    function hubsRefresh() {
+      var wrap = $('#ttHubs');
+      if (!wrap) return;
+      var r = mulberry32(daySeed(0) ^ 0x7EB5);
+      var out = '';
+      HUBTZ.forEach(function (h) {
+        var time = '--:--';
+        try {
+          time = new Intl.DateTimeFormat('en-GB', {
+            hour: '2-digit', minute: '2-digit', hour12: false, timeZone: h[1]
+          }).format(new Date());
+        } catch (e) {}
+        out += '<p class="tt-hubrow"><span class="h">' + h[0] + '</span>'
+          + '<span class="t">' + time + '</span>'
+          + '<span class="c">' + COND[(r() * COND.length) | 0] + '</span></p>';
+      });
+      wrap.innerHTML = out;
+      var day = $('#ttDay');
+      if (day) day.textContent = 'BROADCAST DAY ' + broadcastDay() + ' · REFRESHES DAILY';
+    }
+    hubsRefresh();
+  })();
+
+  /* ============================================================
+     CH 06 — THE TRAFFIC DESK
+     Structured intake over the same honest mailto: the desk
+     live-composes the message into #btnRec's href and a co-equal
+     [Copy Transmission] key. It promises filing, never receipt.
+     ============================================================ */
+  (function () {
+    var form = $('#deskForm');
+    if (!form) return;
+    var msg = $('#deskMsg'), from = $('#deskFrom'), code = $('#deskCode');
+    var rec = $('#btnRec'), copyTx = $('#copyTx'), eject = $('#ejectCard');
+    var remEl = $('#deskRem'), refEl = $('#deskRef'), statusEl = $('#deskStatus');
+    var reelL = $('#deskReelL'), reelR = $('#deskReelR');
+    var tapeL = $('#deskTapeL'), tapeR = $('#deskTapeR');
+    var needle = $('#deskNeedle');
+    var MAX = 1400, TAPE_SECS = 90;
+    var ADDR = 'contactandrewcalebintl@gmail.com';
+    var ref = 'ACI-' + refNum();
+    if (refEl) refEl.textContent = 'REF ' + ref;
+    if (needle) needle.setAttribute('transform', 'rotate(-44 45 36)');
+    form.addEventListener('submit', function (e) { e.preventDefault(); });
+
+    /* same-tab draft survival (store facade = sessionStorage law) */
+    try {
+      var draft = JSON.parse(store.get('aci_desk') || 'null');
+      if (draft) { if (msg) msg.value = draft.m || ''; if (from) from.value = draft.f || ''; }
+    } catch (e) {}
+
+    function tclass() {
+      var c = form.querySelector('input[name="tclass"]:checked');
+      return c ? c.value : 'OTHER';
+    }
+    function authState() {
+      var v = (code && code.value || '').trim().toUpperCase();
+      if (!v) return 0;
+      return (v === codewordFor(0) || v === codewordFor(-1)) ? 2 : 1;
+    }
+    function compose() {
+      var name = (from && from.value || '').trim();
+      var word = (code && code.value || '').trim().toUpperCase();
+      var auth = authState();
+      var subj = '[' + ref + '] ' + tclass()
+        + (name ? ' — ' + name.toUpperCase() : '')
+        + (auth === 2 ? ' [AUTH]' : '');
+      var body = 'TRANSMISSION ' + ref
+        + '\nCLASS: ' + tclass()
+        + '\nFROM: ' + (name || 'UNSIGNED')
+        + (word ? '\nCODEWORD: ' + word + (auth === 2 ? ' (VERIFIED)' : '') : '')
+        + '\n---\n' + ((msg && msg.value) || '(blank tape)')
+        + '\n---\nFiled via andrewcalebintl.com · CH 06';
+      return { subj: subj, body: body };
+    }
+    function sync() {
+      var c = compose();
+      if (rec) rec.href = 'mailto:' + ADDR
+        + '?subject=' + encodeURIComponent(c.subj)
+        + '&body=' + encodeURIComponent(c.body);
+      var used = ((msg && msg.value) || '').length;
+      var remS = Math.max(0, Math.round(TAPE_SECS * (1 - used / MAX)));
+      if (remEl) remEl.textContent = 'TAPE REM ' + Math.floor(remS / 60) + ':' + pad(remS % 60);
+      /* tape transfers between reels proportional to what's recorded */
+      var k = used / MAX;
+      if (tapeL) tapeL.setAttribute('r', (15 - 7 * k).toFixed(1));
+      if (tapeR) tapeR.setAttribute('r', (8 + 7 * k).toFixed(1));
+      try { store.set('aci_desk', JSON.stringify({ m: (msg && msg.value) || '', f: (from && from.value) || '' })); } catch (e) {}
+    }
+
+    /* reels spin and the VU needle kicks with your keystroke cadence */
+    var vel = 0, needleV = 0, spinOn = false, rot = 0;
+    function kick() {
+      if (RM) return;
+      vel = 3.4;
+      needleV = Math.min(needleV + 24, 62);
+      if (spinOn) return;
+      spinOn = true;
+      addTask(function () {
+        rot += vel; vel *= 0.94; needleV *= 0.9;
+        var rs = 'rotate(' + (rot % 360).toFixed(1) + ')';
+        if (reelL) reelL.setAttribute('transform', rs);
+        if (reelR) reelR.setAttribute('transform', rs);
+        if (needle) needle.setAttribute('transform', 'rotate(' + (-44 + needleV).toFixed(1) + ' 45 36)');
+        if (vel < 0.05 && needleV < 0.6) { spinOn = false; return false; }
+      });
+    }
+    ['input', 'change'].forEach(function (ev) { form.addEventListener(ev, sync); });
+    if (msg) msg.addEventListener('input', kick);
+    if (code) code.addEventListener('change', function () {
+      var a = authState();
+      if (!statusEl) return;
+      statusEl.classList.toggle('hot', a === 2);
+      if (a === 2) statusEl.textContent = 'Codeword accepted. You were really listening.';
+      else if (a === 1) statusEl.textContent = 'Codeword logged.';
+    });
+
+    /* the existing btnRec handler plays the tone + heats the REC dot;
+       this one adds the dial-out and the honest narration */
+    function dtmf9(t, i) {
+      /* DTMF "9" = 852 Hz + 1477 Hz, dialed three times for 99.9 */
+      [852, 1477].forEach(function (f) {
+        var o = audioCtx.createOscillator(); o.type = 'sine'; o.frequency.value = f;
+        var g = audioCtx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(0.07, t + 0.01);
+        g.gain.setValueAtTime(0.07, t + 0.09);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.13);
+        o.connect(g); g.connect(sfxBus);
+        o.start(t); o.stop(t + 0.16);
+      });
+    }
+    if (rec) rec.addEventListener('click', function () {
+      if (audioCtx && AE.on) {
+        var t = audioCtx.currentTime;
+        dtmf9(t, 0); dtmf9(t + 0.16, 1); dtmf9(t + 0.32, 2);
+      }
+      if (statusEl) statusEl.textContent = 'Tape rolling — ' + ref + ' handed to your mail app. Not sent yet: you press send there.';
+    });
+    if (copyTx) copyTx.addEventListener('click', function () {
+      var c = compose();
+      var full = 'TO: ' + ADDR + '\nSUBJECT: ' + c.subj + '\n\n' + c.body;
+      var ok = function () {
+        copyTx.textContent = '[Transmission Copied]';
+        if (statusEl) statusEl.textContent = 'Transmission copied — paste it into any mail client.';
+        setTimeout(function () { copyTx.textContent = '[Copy Transmission]'; }, 2200);
+      };
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(full).then(ok).catch(function () {});
+        } else {
+          var ta = document.createElement('textarea');
+          ta.value = full; ta.setAttribute('readonly', '');
+          ta.style.position = 'fixed'; ta.style.opacity = '0';
+          document.body.appendChild(ta); ta.select();
+          document.execCommand('copy');
+          ta.remove(); ok();
+        }
+      } catch (e) {}
+    });
+
+    /* the operative card: a client-side vCard, ejected */
+    if (eject) eject.addEventListener('click', function () {
+      try {
+        var v = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Andrew Caleb\r\nORG:Andrew Caleb International\r\nTITLE:Operator\r\nEMAIL:' + ADDR
+          + '\r\nURL:https://www.andrewcalebintl.com/\r\nNOTE:Go Anywhere\\, Meet Anyone. Callsign: Skywave.\r\nEND:VCARD\r\n';
+        var blob = new Blob([v], { type: 'text/vcard' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url; a.download = 'andrew-caleb-aci.vcf';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+        if (statusEl) statusEl.textContent = 'Contact card ejected — check your downloads.';
+        if (AE.blip) AE.blip();
+      } catch (e) {}
+    });
+
+    sync();
+  })();
+
+  /* ============================================================
+     THE REMOTE — every key delegates to the canonical handlers;
+     the popover pair itself is declarative (works without JS).
+     ============================================================ */
+  (function () {
+    var remote = $('#remote'), rBtn = $('#remoteBtn');
+    if (!remote || !rBtn) return;
+    if (!('popover' in HTMLElement.prototype)) {
+      rBtn.style.display = 'none';
+      return;
+    }
+    var ir = remote.querySelector('.rc-ir');
+    var closeRemote = function () { try { remote.hidePopover(); } catch (e) {} };
+    remote.addEventListener('click', function (e) {
+      var k = e.target.closest ? e.target.closest('.rc-key') : null;
+      if (k && ir && !RM) {
+        ir.classList.add('tx');
+        setTimeout(function () { ir.classList.remove('tx'); }, 220);
+      }
+      /* channel keys ride the shared nav delegation; just fold up after */
+      if (e.target.closest && e.target.closest('a')) closeRemote();
+    });
+    var rcRew = $('#rcRew');
+    if (rcRew) rcRew.addEventListener('click', function () {
+      closeRemote();
+      var rw = $('#rewBtn');
+      if (rw) rw.click();
+    });
+    /* Call the canonical functions, not synthetic .click()s: the audio
+       resume must run inside THIS real activation, and a nested untrusted
+       dispatch has been seen to leave the context suspended on first press. */
+    var rcFx = $('#rcFx');
+    if (rcFx) rcFx.addEventListener('click', toggleFx);
+    var rcFm = $('#rcFm');
+    if (rcFm) rcFm.addEventListener('click', function () {
+      audioWanted = !AE.on;
+      setAudio(audioWanted);
+    });
+    var rcShare = $('#rcShare');
+    if (rcShare) rcShare.addEventListener('click', function () {
+      var ch = hudCh ? hudCh.textContent : 'CH 01';
+      var sec = null;
+      $$('[data-ch][id]').forEach(function (s) { if (s.dataset.ch === ch) sec = s; });
+      var url = location.origin + location.pathname
+        + (sec && sec.id !== 'top' ? '#' + sec.id : '');
+      var lbl = rcShare.querySelector('i');
+      var done = function () {
+        if (lbl) {
+          lbl.textContent = 'Sent';
+          setTimeout(function () { lbl.textContent = 'Share'; }, 1600);
+        }
+      };
+      try {
+        if (navigator.share) {
+          navigator.share({ title: document.title, url: url }).then(done).catch(function () {});
+        } else if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url).then(done).catch(function () {});
+        }
+      } catch (e) {}
+    });
+    /* digit punching while the remote is open */
+    remote.addEventListener('keydown', function (e) {
+      if (e.key >= '1' && e.key <= '7') {
+        var a = remote.querySelectorAll('.rc-chans a')[parseInt(e.key, 10) - 1];
+        if (a) { e.preventDefault(); a.click(); }
+      }
+    });
   })();
 })();
 </script>

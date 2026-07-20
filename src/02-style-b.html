@@ -812,6 +812,282 @@ html.rm #carLane { display: none; }
 html.rm #carLane.rm-show { display: block; }
 
 /* ============================================================
+   CH 06 — THE TRAFFIC DESK (structured transmission intake)
+   ============================================================ */
+/* .nojs-actions is the no-JS twin of the desk's action row; html.js swaps
+   them (the desk and other JS-only chrome exist only under html.js).
+   NB: the head noscript block cannot hide elements that declare their own
+   display (it loses the cascade to this body stylesheet) — which is why
+   .boot and .fleet-actions are gated here too, fixing a latent no-JS bug
+   where the boot curtain never lifted. */
+html.js .tape-card .nojs-actions { display: none; }
+html:not(.js) .desk { display: none; }
+html:not(.js) .tt-panel { display: none; }
+html:not(.js) .rc-js { display: none; }
+html:not(.js) .boot { display: none; }
+html:not(.js) .fleet-actions { display: none; }
+.desk { margin-top: 4px; }
+.desk-class {
+  border: 1px solid rgba(255,204,0,.35);
+  padding: 12px 14px 10px; margin-bottom: 18px;
+  display: flex; gap: 10px; flex-wrap: wrap;
+}
+.desk-class legend {
+  font-family: var(--font-osd); font-size: 16px;
+  letter-spacing: .18em; text-transform: uppercase;
+  color: var(--osd-amber); padding: 0 8px;
+}
+.desk-class label { cursor: pointer; position: relative; }
+.desk-class input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.desk-class span {
+  display: inline-block;
+  font-family: var(--font-osd); font-size: 16px;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--chrome);
+  border: 1px solid rgba(233,237,245,.35);
+  padding: 5px 12px 2px;
+  transition: background .15s ease, color .15s ease;
+}
+.desk-class input:checked + span { color: var(--void); background: var(--osd-amber); border-color: var(--osd-amber); }
+.desk-class input:focus-visible + span { outline: 2px solid var(--signal-cyan); outline-offset: 3px; }
+.desk-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.desk-field {
+  display: block;
+  font-family: var(--font-osd); font-size: 15px;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: rgba(233,237,245,.75);
+  margin-bottom: 14px;
+}
+.desk-field input, .desk-field textarea {
+  display: block; width: 100%; margin-top: 6px;
+  background: rgba(11,0,26,.7); color: var(--osd-amber);
+  border: 1px solid rgba(255,204,0,.4); border-radius: 2px;
+  font-family: var(--font-osd); font-size: 18px; letter-spacing: .05em;
+  padding: 8px 10px 6px;
+}
+.desk-field input:focus-visible, .desk-field textarea:focus-visible {
+  outline: 2px solid var(--signal-cyan); outline-offset: 2px;
+}
+.desk-field textarea { resize: vertical; min-height: 110px; line-height: 1.4; text-transform: none; }
+.desk ::placeholder { color: rgba(255,204,0,.35); opacity: 1; }
+.desk-deck { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 4px 0 10px; }
+.desk-reels { width: 150px; height: auto; }
+.desk-vu { width: 90px; height: auto; }
+#deskTapeL, #deskTapeR { transform-box: fill-box; transform-origin: center; }
+.desk-tapecount { font-size: 16px; line-height: 1.5; }
+.desk-status {
+  font-family: var(--font-osd); font-size: 16px;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: rgba(0,242,255,.85);
+  min-height: 1.4em; margin-bottom: 12px;
+}
+.desk-status.hot { color: var(--osd-amber); }
+.btn-key {
+  background: rgba(11,0,26,.5); cursor: pointer;
+  border: 1px solid rgba(0,242,255,.5); color: var(--signal-cyan);
+  font-family: var(--font-osd); font-size: 16px;
+  letter-spacing: .12em; text-transform: uppercase;
+  padding: 10px 16px 7px;
+  transition: box-shadow .18s ease;
+}
+.btn-key:hover { box-shadow: 0 0 14px rgba(0,242,255,.4); }
+
+/* ============================================================
+   CH 07 — ACI TEXT (teletext service)
+   ============================================================ */
+.tt-set { max-width: 780px; margin: 0 auto; }
+.tt-screen {
+  position: relative;
+  background: #050014;
+  border: 2px solid rgba(51,255,51,.18);
+  border-radius: 10px;
+  padding: clamp(14px, 3vw, 26px) clamp(16px, 4vw, 40px) clamp(18px, 3vw, 30px);
+  font-family: var(--font-osd);
+  font-size: clamp(16px, 2.3vw, 21px);
+  line-height: 1.35;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  box-shadow: inset 0 0 70px rgba(20,0,200,.22), 0 24px 60px rgba(0,0,0,.55);
+  text-shadow: 1px 0 rgba(255,0,60,.22), -1px 0 rgba(0,120,255,.22);
+}
+.tt-head {
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  color: #f4f4ff;
+  border-bottom: 1px solid rgba(51,255,51,.25);
+  padding-bottom: 6px; margin-bottom: 16px;
+}
+.tt-pno { color: #ffe400; }
+.tt-pno.err { color: var(--red-rec); }
+.tt-clk { color: #00f2ff; font-variant-numeric: tabular-nums; }
+.tt-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.tt-page + .tt-page { margin-top: 40px; }
+.tt-set.live .tt-page + .tt-page { margin-top: 0; }
+.tt-set.live .tt-page[hidden] { display: none; }
+.tt-set.live .tt-screen { min-height: 29em; }
+.tt-page p { margin-bottom: 12px; max-width: 100%; }
+.tt-dh { font-size: 2em; line-height: 1.05; margin-bottom: 12px; }
+.tt-y { color: #ffe400; }
+.tt-c { color: #00f2ff; }
+.tt-g { color: #33ff33; }
+.tt-m { color: #ff5fff; }
+.tt-w { color: #f4f4ff; }
+.tt-b { display: inline-block; background: var(--boot-blue); color: #f4f4ff; padding: 2px 10px 0; }
+.tt-sep {
+  height: .55em; margin: 16px 0;
+  background: repeating-linear-gradient(90deg,
+    rgba(255,0,255,.8) 0 .6em, rgba(0,242,255,.8) .6em 1.2em,
+    rgba(255,228,0,.8) 1.2em 1.8em, transparent 1.8em 2.4em);
+}
+.tt-ix a {
+  display: flex; align-items: baseline; gap: 10px;
+  color: #f4f4ff; text-decoration: none; padding: 3px 0;
+}
+.tt-ix a:hover, .tt-ix a:focus-visible { color: #ffe400; }
+.tt-dots { flex: 1; border-bottom: 2px dotted rgba(51,255,51,.45); transform: translateY(-4px); }
+.tt-square {
+  font-family: var(--font-osd); font-size: 1em;
+  line-height: 1.55; letter-spacing: .18em;
+  background: rgba(20,0,200,.28);
+  display: inline-block; padding: 8px 16px; margin-bottom: 12px;
+  white-space: pre;
+}
+.tt-art { margin-bottom: 10px; }
+.tt-art svg { display: block; width: min(300px, 70%); height: auto; }
+.tt-hubs .tt-hubrow { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+.tt-hubs .tt-hubrow .h { color: #f4f4ff; min-width: 9ch; }
+.tt-hubs .tt-hubrow .t { color: #ffe400; min-width: 6ch; font-variant-numeric: tabular-nums; }
+.tt-hubs .tt-hubrow .c { color: #00f2ff; }
+.tt-panel {
+  display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+  justify-content: space-between; margin-top: 14px;
+}
+.tt-keys { display: grid; grid-template-columns: repeat(5, 46px); gap: 6px; }
+.tt-keys button {
+  height: 40px; cursor: pointer;
+  background: rgba(11,0,26,.7);
+  border: 1px solid rgba(51,255,51,.4); color: #33ff33;
+  font-family: var(--font-osd); font-size: 20px; padding-top: 3px;
+}
+.tt-keys button:hover { background: rgba(51,255,51,.12); }
+.tt-fast { display: flex; gap: 6px; flex-wrap: wrap; }
+.tt-fast button {
+  font-family: var(--font-osd); font-size: 15px;
+  letter-spacing: .08em; text-transform: uppercase;
+  cursor: pointer; border: none; color: #05000e;
+  padding: 9px 13px 5px;
+}
+.tt-fast button:hover { filter: brightness(1.15); }
+.fk-r { background: #ff2b2b; }
+.fk-g { background: #33ff33; }
+.fk-y { background: #ffe400; }
+.fk-b { background: #00a2ff; }
+.tt-hint { font-size: 15px; color: rgba(233,237,245,.55); width: 100%; }
+/* Decoder row-paint: rows pop in scanline order on page flip */
+.tt-set.live .tt-page.flip > * {
+  animation: ttrow .4s steps(2, end) both;
+  animation-delay: calc(var(--r, 0) * 42ms);
+}
+@keyframes ttrow { from { opacity: 0; } }
+html.rm .tt-set.live .tt-page.flip > * { animation: none; }
+
+/* ============================================================
+   THE REMOTE (Popover API; top layer, no z-index war)
+   ============================================================ */
+#remote {
+  position: fixed; inset: auto 18px 76px auto; margin: 0;
+  width: 258px;
+  background: linear-gradient(180deg, #1a1a24, #0c0c14);
+  border: 1px solid rgba(233,237,245,.2);
+  border-radius: 14px;
+  padding: 14px;
+  color: var(--chrome);
+  box-shadow: 0 30px 70px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.08);
+  opacity: 1; transform: none;
+  transition: opacity .22s ease, transform .22s ease,
+    display .22s allow-discrete, overlay .22s allow-discrete;
+}
+#remote:popover-open { display: flex; flex-direction: column; gap: 12px; }
+@starting-style {
+  #remote:popover-open { opacity: 0; transform: translateY(14px) scale(.97); }
+}
+#remote::backdrop { background: rgba(5,0,14,.3); }
+.rc-brand {
+  display: flex; justify-content: space-between; align-items: center;
+  font-family: var(--font-osd); font-size: 15px;
+  letter-spacing: .3em; text-transform: uppercase;
+  color: rgba(233,237,245,.6);
+}
+.rc-brand span:first-child { color: var(--neon-pink); }
+.rc-ir {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #2a0b0b; box-shadow: inset 0 0 4px #000;
+}
+.rc-ir.tx { background: var(--red-rec); box-shadow: 0 0 10px rgba(255,43,43,.9); }
+.rc-chans { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.rc-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.rc-key {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; padding: 7px 2px 5px;
+  background: #16161f;
+  border: 1px solid rgba(233,237,245,.18); border-radius: 8px;
+  cursor: pointer; text-decoration: none; color: var(--chrome);
+  box-shadow: 0 2px 0 rgba(0,0,0,.6);
+}
+.rc-key b { font-family: var(--font-osd); font-size: 18px; font-weight: 400; color: var(--osd-amber); line-height: 1.1; }
+.rc-key i { font-style: normal; font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: rgba(233,237,245,.55); }
+.rc-key:hover { border-color: var(--signal-cyan); }
+.rc-key:hover b { color: var(--signal-cyan); }
+.rc-key:active { transform: translateY(1px); box-shadow: 0 1px 0 rgba(0,0,0,.6); }
+.rc-codes {
+  display: flex; flex-direction: column; gap: 3px;
+  font-family: var(--font-osd); font-size: 14px;
+  letter-spacing: .06em; text-transform: uppercase;
+  color: rgba(233,237,245,.5);
+  border-top: 1px solid rgba(233,237,245,.12); padding-top: 9px;
+}
+.rc-codes-t { color: var(--osd-amber); letter-spacing: .25em; }
+
+/* ============================================================
+   TAPE REMAINING — zero-JS scroll-driven reel gauge (HUD)
+   Scroll position IS tape position. CSS scroll timelines only;
+   hidden entirely where unsupported so the HUD reads complete.
+   NB: animation-timeline must come AFTER the animation shorthand.
+   ============================================================ */
+.tapegauge { display: none; }
+@supports (animation-timeline: scroll()) {
+  @property --tgrem { syntax: '<integer>'; inherits: false; initial-value: 46; }
+  .tapegauge { display: inline-flex; align-items: center; gap: 7px; margin-left: 14px; vertical-align: -6px; }
+  .tapegauge svg { width: 58px; height: auto; display: block; }
+  .tg-tape, .tg-spin { transform-box: fill-box; transform-origin: center; }
+  .tg-supply .tg-tape {
+    animation: tgshrink 1s linear both;
+    animation-timeline: scroll(root);
+  }
+  .tg-takeup .tg-tape {
+    animation: tggrow 1s linear both;
+    animation-timeline: scroll(root);
+  }
+  .tg-spin {
+    animation: tgspin 1s linear both;
+    animation-timeline: scroll(root);
+  }
+  @keyframes tgshrink { to { transform: scale(.55); } }
+  @keyframes tggrow { from { transform: scale(.55); } to { transform: scale(1); } }
+  @keyframes tgspin { to { transform: rotate(3.5turn); } }
+  .tg-rem { font-size: .85em; }
+  .tg-rem::after {
+    counter-reset: tgrem var(--tgrem);
+    content: "REM 0:" counter(tgrem, decimal-leading-zero);
+    animation: tgcount 1s linear both;
+    animation-timeline: scroll(root);
+  }
+  @keyframes tgcount { from { --tgrem: 46; } to { --tgrem: 0; } }
+}
+html.rm .tapegauge .tg-tape,
+html.rm .tapegauge .tg-spin,
+html.rm .tapegauge .tg-rem::after { animation: none; }
+
+/* ============================================================
    RESPONSIVE
    ============================================================ */
 @media (max-width: 940px) {
@@ -849,6 +1125,15 @@ html.rm #carLane.rm-show { display: block; }
   #carLane { bottom: 6px; height: 95px; }
   .hud .np { display: none; }
   .fleet-log { font-size: 16px; }
+  .tapegauge { display: none; }
+  .desk-row { grid-template-columns: 1fr; }
+  .tt-keys { grid-template-columns: repeat(5, 1fr); width: 100%; }
+  .tt-panel { justify-content: flex-start; }
+  #remote {
+    inset: auto 0 0 0; width: 100%;
+    border-radius: 14px 14px 0 0;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 /* Reduced motion: the look survives fully static.
@@ -882,5 +1167,11 @@ html.rm #carLane.rm-show { display: block; }
   .m-ping { animation: none; transform: scale(.8); opacity: .3; }
   #carLane { display: none; }
   .car-underglow { animation: none; }
+  .tt-set.live .tt-page.flip > * { animation: none; }
+  .tapegauge .tg-tape, .tapegauge .tg-spin, .tapegauge .tg-rem::after { animation: none; }
+  #remote { transition: none; }
+  .desk-class span { transition: none; }
 }
+html.rm #remote { transition: none; }
+html.rm .desk-class span { transition: none; }
 </style>
