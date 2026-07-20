@@ -15,10 +15,20 @@
    ~380KB document (map data included) finishes parsing. style.display, not
    [hidden]: the author-level display:flex would win over the hidden attr. */
 try { if (sessionStorage.getItem('aci_boot')) document.getElementById('boot').style.display = 'none'; } catch (e) {}
+/* Side B's html.js law, adopted: JS-only chrome (the traffic desk, the
+   teletext keypad, the remote's JS keys) gates on html.js so the no-JS
+   page never shows dead controls — the head noscript block can't do this
+   (it loses the cascade to the body stylesheet). */
+document.documentElement.classList.add('js');
 </script>
 
 <!-- FIXED FX LAYERS (decorative) -->
 <div class="fx-glow" aria-hidden="true"></div>
+<!-- Nightfall arc: the broadcast day darkens with scroll and the stars come
+     out (CSS scroll timelines; hidden entirely where unsupported) -->
+<div class="fx-nightfall" aria-hidden="true"></div>
+<div class="fx-nightstars" aria-hidden="true"></div>
+<div class="fx-moon" aria-hidden="true"></div>
 <div class="fx-scanlines" aria-hidden="true"></div>
 <div class="fx-vignette" aria-hidden="true"></div>
 <div class="fx-flicker" aria-hidden="true"></div>
@@ -34,17 +44,63 @@ try { if (sessionStorage.getItem('aci_boot')) document.getElementById('boot').st
      toggles, and aria-hidden on an ancestor cannot be re-exposed by a
      descendant. Decorative readouts opt out individually instead. -->
 <div class="hud">
-  <div class="tl osd" aria-hidden="true"><span class="playglyph"></span>PLAY&nbsp;&nbsp;<span id="hudCh">CH 01</span></div>
+  <div class="tl osd" aria-hidden="true"><span class="playglyph"></span>PLAY&nbsp;&nbsp;<span id="hudCh">CH 01</span><span class="tapegauge">
+    <svg viewBox="0 0 66 24" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="1" width="64" height="22" rx="4" fill="rgba(11,0,26,.7)" stroke="rgba(255,204,0,.35)"/>
+      <g class="tg-reel tg-supply" transform="translate(16 12)">
+        <circle class="tg-tape" r="8" fill="none" stroke="rgba(255,204,0,.5)" stroke-width="4"/>
+        <g class="tg-spin"><circle r="3.4" fill="none" stroke="#ffcc00" stroke-width="1.2"/><line x1="0" y1="-3.4" x2="0" y2="3.4" stroke="#ffcc00" stroke-width="1.2"/></g>
+      </g>
+      <g class="tg-reel tg-takeup" transform="translate(50 12)">
+        <circle class="tg-tape" r="8" fill="none" stroke="rgba(255,204,0,.5)" stroke-width="4"/>
+        <g class="tg-spin"><circle r="3.4" fill="none" stroke="#ffcc00" stroke-width="1.2"/><line x1="0" y1="-3.4" x2="0" y2="3.4" stroke="#ffcc00" stroke-width="1.2"/></g>
+      </g>
+      <rect x="24" y="10" width="18" height="4" fill="rgba(255,204,0,.3)"/>
+    </svg>
+    <span class="tg-rem"></span>
+  </span></div>
   <div class="tr osd" aria-hidden="true"><span class="sp">SP &middot; </span><span id="hudCounter">0:00:00</span></div>
   <div class="bl osd" id="hudClock" aria-hidden="true">--:--:--</div>
   <div class="br osd">
     <span class="np" id="npTicker" hidden><span class="np-inner" id="npText"></span></span>
     <button class="audio-btn" id="fxBtn" aria-pressed="false" aria-label="Toggle visual effects">FX [On]</button>
     <button class="audio-btn" id="audioBtn" aria-pressed="false" aria-label="Toggle radio: ACI Skywave 99.9 FM">FM 99.9 [Tune]</button>
+    <button class="audio-btn" id="remoteBtn" popovertarget="remote" aria-label="Open remote control">RC [&#9636;]</button>
     <span id="recWrap" aria-hidden="true"><span class="recdot"></span>REC</span>
   </div>
   <div class="autotrack osd" id="autotrack" aria-hidden="true">Auto Tracking</div>
 </div>
+
+<!-- THE REMOTE — top-layer VCR remote (Popover API). The declarative
+     popovertarget pair works without JS; channel keys are real anchors that
+     ride the existing data-ch nav delegation. JS-only keys carry .rc-js and
+     hide under the html:not(.js) law. -->
+<div id="remote" popover role="group" aria-label="ACI remote control">
+  <div class="rc-brand" aria-hidden="true"><span>ACI</span> RC-86 <span class="rc-ir"></span></div>
+  <div class="rc-chans">
+    <a class="rc-key" href="#top" data-ch="CH 01" data-name="SIGNAL"><b>1</b><i>Signal</i></a>
+    <a class="rc-key" href="#fleet" data-ch="CH 02" data-name="FLEET TRACKER"><b>2</b><i>Fleet</i></a>
+    <a class="rc-key" href="#ethos" data-ch="CH 03" data-name="THE ETHOS"><b>3</b><i>Ethos</i></a>
+    <a class="rc-key" href="#channels" data-ch="CH 04" data-name="CHANNELS"><b>4</b><i>Chans</i></a>
+    <a class="rc-key" href="#operator" data-ch="CH 05" data-name="THE OPERATOR"><b>5</b><i>Oprtr</i></a>
+    <a class="rc-key" href="#contact" data-ch="CH 06" data-name="TRANSMISSION"><b>6</b><i>Contact</i></a>
+    <a class="rc-key" href="#text" data-ch="CH 07" data-name="ACI TEXT"><b>7</b><i>Text</i></a>
+  </div>
+  <div class="rc-row">
+    <button type="button" class="rc-key rc-js" id="rcRew" aria-label="Rewind to top"><b>&#9664;&#9664;</b><i>Rew</i></button>
+    <a class="rc-key" href="drive/" aria-label="Eject: flip to Side B"><b>&#9167;</b><i>Side B</i></a>
+    <button type="button" class="rc-key rc-js" id="rcFx" aria-pressed="true" aria-label="Toggle visual effects"><b>FX</b><i>Effects</i></button>
+    <button type="button" class="rc-key rc-js" id="rcFm" aria-pressed="false" aria-label="Toggle radio"><b>FM</b><i>99.9</i></button>
+    <button type="button" class="rc-key rc-js" id="rcShare" aria-label="Share current channel"><b>&#8599;</b><i>Share</i></button>
+  </div>
+  <div class="rc-codes">
+    <span class="rc-codes-t">Codes</span>
+    <span>&#8593;&#8593;&#8595;&#8595;&#8592;&#8594;&#8592;&#8594;BA &mdash; the car</span>
+    <span>Tap REC &times;3 &mdash; same, no keyboard</span>
+    <span>TEXT P888 &mdash; and then listen</span>
+  </div>
+</div>
+<span id="rcStatus" class="vh" role="status" aria-live="polite"></span>
 
 <!-- NAV -->
 <nav class="tapenav" aria-label="Sections">
@@ -55,6 +111,7 @@ try { if (sessionStorage.getItem('aci_boot')) document.getElementById('boot').st
   <a href="#channels" data-ch="CH 04" data-name="CHANNELS">Channels</a>
   <a href="#operator" data-ch="CH 05" data-name="THE OPERATOR">Operator</a>
   <a href="#contact" data-ch="CH 06" data-name="TRANSMISSION">Contact</a>
+  <a href="#text" data-ch="CH 07" data-name="ACI TEXT">Text</a>
 </nav>
 
 <div class="page" id="page">
@@ -303,14 +360,239 @@ try { if (sessionStorage.getItem('aci_boot')) document.getElementById('boot').st
           <p>Tell us where you want to go, or who you need to meet, and we will take it from there.</p>
           <a class="email" href="mailto:contactandrewcalebintl@gmail.com">contactandrewcalebintl@gmail.com</a><button class="copy-email" id="copyEmail" type="button" aria-label="Copy email address">[Copy]</button>
         </div>
-        <div class="actions">
-          <a class="btn-rec" id="btnRec" href="mailto:contactandrewcalebintl@gmail.com"><span class="dot" aria-hidden="true"></span>Press Rec</a>
+        <!-- The Traffic Desk: JS-only enhancement over the always-working
+             mailto above (hidden no-JS by the html:not(.js) law). It composes
+             the mailto live; it never claims to "send" anything itself. -->
+        <form class="desk" id="deskForm">
+          <fieldset class="desk-class">
+            <legend>Traffic class</legend>
+            <label><input type="radio" name="tclass" value="PROSPECT" checked><span>Prospect</span></label>
+            <label><input type="radio" name="tclass" value="VENTURE"><span>Venture</span></label>
+            <label><input type="radio" name="tclass" value="PRESS"><span>Press</span></label>
+            <label><input type="radio" name="tclass" value="OTHER"><span>Other</span></label>
+          </fieldset>
+          <div class="desk-row">
+            <label class="desk-field">From / Callsign
+              <input id="deskFrom" type="text" maxlength="60" autocomplete="name" placeholder="Optional">
+            </label>
+            <label class="desk-field">Codeword
+              <input id="deskCode" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="If the radio gave you one">
+            </label>
+          </div>
+          <label class="desk-field desk-msgfield">Message
+            <span id="deskMsgHint" class="vh">The tape holds 1400 characters; recording stops at the end of the tape.</span>
+            <textarea id="deskMsg" maxlength="1400" rows="5" aria-describedby="deskMsgHint" placeholder="Where do you want to go? Who do you need to meet?"></textarea>
+          </label>
+          <div class="desk-deck" aria-hidden="true">
+            <svg class="desk-reels" viewBox="0 0 150 44" xmlns="http://www.w3.org/2000/svg">
+              <rect x="1" y="1" width="148" height="42" rx="6" fill="rgba(11,0,26,.75)" stroke="rgba(255,204,0,.3)"/>
+              <g transform="translate(34 22)">
+                <circle id="deskTapeL" r="15" fill="none" stroke="rgba(255,204,0,.45)" stroke-width="7"/>
+                <g id="deskReelL"><circle r="6" fill="none" stroke="#ffcc00" stroke-width="1.4"/><line x1="0" y1="-6" x2="0" y2="6" stroke="#ffcc00" stroke-width="1.4"/><line x1="-6" y1="0" x2="6" y2="0" stroke="#ffcc00" stroke-width="1.4"/></g>
+              </g>
+              <g transform="translate(116 22)">
+                <circle id="deskTapeR" r="8" fill="none" stroke="rgba(255,204,0,.45)" stroke-width="7"/>
+                <g id="deskReelR"><circle r="6" fill="none" stroke="#ffcc00" stroke-width="1.4"/><line x1="0" y1="-6" x2="0" y2="6" stroke="#ffcc00" stroke-width="1.4"/><line x1="-6" y1="0" x2="6" y2="0" stroke="#ffcc00" stroke-width="1.4"/></g>
+              </g>
+              <rect x="56" y="19" width="38" height="6" fill="rgba(255,204,0,.25)"/>
+            </svg>
+            <svg class="desk-vu" viewBox="0 0 90 44" xmlns="http://www.w3.org/2000/svg">
+              <rect x="1" y="1" width="88" height="42" rx="6" fill="rgba(11,0,26,.75)" stroke="rgba(255,204,0,.3)"/>
+              <path d="M12 36 A36 36 0 0 1 78 36" fill="none" stroke="rgba(255,204,0,.35)" stroke-width="2"/>
+              <path d="M64 15 A36 36 0 0 1 78 36" fill="none" stroke="rgba(255,43,43,.6)" stroke-width="2"/>
+              <line id="deskNeedle" x1="45" y1="36" x2="45" y2="8" stroke="#ffcc00" stroke-width="2"/>
+              <circle cx="45" cy="36" r="3" fill="#ffcc00"/>
+              <text x="45" y="42" text-anchor="middle" font-size="7" fill="rgba(255,204,0,.7)" font-family="monospace">VU</text>
+            </svg>
+            <span class="desk-tapecount osd"><span id="deskRem">TAPE REM 1:30</span><br><span id="deskRef">REF --</span></span>
+          </div>
+          <p class="desk-status" id="deskStatus" aria-live="polite" role="status">Blank tape. Route your traffic and record.</p>
+          <div class="actions">
+            <a class="btn-rec" id="btnRec" href="mailto:contactandrewcalebintl@gmail.com"><span class="dot" aria-hidden="true"></span>Press Rec</a>
+            <button type="button" class="btn-key" id="copyTx">[Copy Transmission]</button>
+            <button type="button" class="btn-key" id="ejectCard" aria-label="Eject contact card: download vCard">&#9167; Eject Contact Card</button>
+            <div class="barcode" aria-hidden="true"></div>
+          </div>
+        </form>
+        <div class="actions nojs-actions">
+          <a class="btn-rec" href="mailto:contactandrewcalebintl@gmail.com"><span class="dot" aria-hidden="true"></span>Press Rec</a>
           <div class="barcode" aria-hidden="true"></div>
         </div>
       </div>
     </div>
   </div>
   <p class="tape-micro">All transmissions answered. No exceptions.</p>
+</section>
+
+<!-- ============ CH 07 : ACI TEXT (teletext service) ============ -->
+<!-- Pages are real stacked articles: with no JS this section reads top to
+     bottom as a plain document. The JS module collapses it into a one-page
+     decoder with dialed page numbers; the keypad (.tt-panel) is JS-only and
+     hides under the html:not(.js) law. -->
+<section class="channel" id="text" data-ch="CH 07" data-name="ACI TEXT" data-accent="#33ff33">
+  <span class="ch-tab">CH 07 &middot; ACI Text</span>
+  <h2 class="section-title">The Company Pages</h2>
+  <p class="section-kicker">Who we are and how to engage us, broadcast the 1986 way.<span class="jsonly"> Dial a page number on the keypad or your keyboard, or ride the colour keys.</span></p>
+  <div class="tt-set">
+    <div class="tt-screen" id="ttScreen">
+      <div class="tt-head" aria-hidden="true">
+        <span class="tt-pno" id="ttPno">P100</span>
+        <span class="tt-svc">ACI TEXT</span>
+        <span class="tt-clk" id="ttClk">--:--:--</span>
+      </div>
+      <span class="tt-status" id="ttStatus" aria-live="polite"></span>
+
+      <article class="tt-page" id="tt-100" data-page="100" data-pname="Index">
+        <div class="tt-art" aria-hidden="true"></div>
+        <p class="tt-dh tt-y">ANDREW CALEB INTL</p>
+        <p class="tt-c">GO ANYWHERE &middot; MEET ANYONE</p>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <nav class="tt-ix" aria-label="Teletext index">
+          <a href="#tt-200">CAPABILITIES<span class="tt-dots" aria-hidden="true"></span>200</a>
+          <a href="#tt-300">THE OPERATOR<span class="tt-dots" aria-hidden="true"></span>300</a>
+          <a href="#tt-400">ENGAGEMENT TERMS<span class="tt-dots" aria-hidden="true"></span>400</a>
+          <a href="#tt-500">HUBS TODAY<span class="tt-dots" aria-hidden="true"></span>500</a>
+          <a href="#tt-600">OPEN A LINE<span class="tt-dots" aria-hidden="true"></span>600</a>
+        </nav>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <p class="tt-g">AN INTERNATIONAL PROSPECTING COMPANY.
+        WE FIND MARKETS, PARTNERS, PROPERTIES
+        AND PEOPLE BEFORE THE REST OF THE
+        WORLD KNOWS THEY ARE AVAILABLE.</p>
+        <p class="tt-w">SEVEN STATIONS. THREE OCEANS. ONE
+        SIGNAL. THESE PAGES ARE THE PAPERWORK.</p>
+      </article>
+
+      <article class="tt-page" id="tt-200" data-page="200" data-pname="Capabilities">
+        <p class="tt-dh tt-y">CAPABILITIES</p>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <p class="tt-w">1/ MARKET ENTRY + FIRST CONTACT</p>
+        <p class="tt-c">WE LAND FIRST. GROUND TRUTH, LOCAL
+        PLAYERS AND THE PRICE OF THE ROOM,
+        REPORTED BEFORE CAPITAL MOVES.</p>
+        <p class="tt-w">2/ SOURCING + ACQUISITION</p>
+        <p class="tt-c">PROPERTIES, INVENTORY, INSTRUMENTS,
+        INTRODUCTIONS. YOU NAME THE TARGET.
+        WE NAME THE HOLDER AND THE TERMS.</p>
+        <p class="tt-w">3/ INTRODUCTIONS + BROKERAGE</p>
+        <p class="tt-c">THE RIGHT CHAIR AT THE RIGHT TABLE.
+        WE DEAL ONLY IN WARM HANDOFFS.</p>
+        <p class="tt-w">4/ EXPEDITION + LOGISTICS</p>
+        <p class="tt-c">ROUTES, PERMITS, GROUND CREWS AND
+        QUIET FREIGHT IN PLACES THE COURIER
+        APPS HAVE NEVER HEARD OF.</p>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <p class="tt-g">TO ENGAGE ANY OF THE ABOVE ... P600</p>
+      </article>
+
+      <article class="tt-page" id="tt-300" data-page="300" data-pname="The Operator">
+        <p class="tt-dh tt-y">THE OPERATOR</p>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <p class="tt-c">CALEB, ANDREW. CALLSIGN SKYWAVE.
+        COLLECTS HANDSHAKES THE WAY OTHER
+        PEOPLE COLLECT PASSPORT STAMPS.</p>
+        <p class="tt-c">HE IS THE CALL YOU MAKE WHEN THE
+        OPPORTUNITY IS REAL BUT THE PATH
+        TO IT IS NOT. WHICH FLIGHT, WHICH
+        FLOOR, WHICH CHAIR AT THE TABLE.</p>
+        <p class="tt-w">STATUS ........ ACTIVE</p>
+        <p class="tt-w">COVERAGE ...... WORLDWIDE</p>
+        <p class="tt-w">LOCATION ...... [REDACTED]</p>
+        <p class="tt-w">LANGUAGES ..... ENOUGH</p>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <p class="tt-m">"EVERYTHING IS REACHABLE. MOST
+        PEOPLE JUST STOP DIALING."</p>
+        <p class="tt-g">FULL DOSSIER ON CH 05 &middot; UPLINK P600</p>
+      </article>
+
+      <article class="tt-page" id="tt-400" data-page="400" data-pname="Engagement Terms">
+        <p class="tt-dh tt-y">ENGAGEMENT TERMS</p>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <p class="tt-w">1. THE BRIEF</p>
+        <p class="tt-c">YOU STATE THE OBJECTIVE AND THE
+        TERRITORY. ONE PAGE IS PLENTY.</p>
+        <p class="tt-w">2. THE SWEEP</p>
+        <p class="tt-c">WE GO. WE LOOK. WE ASK THE PEOPLE
+        WHO ACTUALLY KNOW.</p>
+        <p class="tt-w">3. THE FINDINGS</p>
+        <p class="tt-c">NAMES, NUMBERS, TERMS AND A
+        RECOMMENDATION. SIGNAL, NO NOISE.</p>
+        <p class="tt-w">4. THE CLOSE</p>
+        <p class="tt-c">INTRODUCTIONS MADE IN PERSON.
+        WE STAY UNTIL THE HANDS SHAKE.</p>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <p class="tt-m">DISCRETION IS NOT A SERVICE TIER.
+        IT IS THE HOUSE CONDITION.</p>
+        <p class="tt-g">RATES ON APPLICATION ....... P600</p>
+      </article>
+
+      <article class="tt-page" id="tt-500" data-page="500" data-pname="Hubs Today">
+        <p class="tt-dh tt-y">HUBS TODAY</p>
+        <p class="tt-b" id="ttDay">CONDITIONS REFRESH DAILY</p>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <div class="tt-hubs" id="ttHubs">
+          <p class="tt-c">NEW YORK &middot; LONDON &middot; DUBAI &middot; TOKYO
+          &middot; SYDNEY &middot; CAPE TOWN &middot; AMAZONIA:
+          LOCAL TIME AND FIELD CONDITIONS AT
+          ALL SEVEN STATIONS, PUBLISHED
+          DAILY ON THE LIVE BROADCAST.</p>
+        </div>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <p class="tt-g">FLEET POSITIONS LIVE ON CH 02</p>
+      </article>
+
+      <article class="tt-page" id="tt-600" data-page="600" data-pname="Open a Line">
+        <p class="tt-dh tt-y">OPEN A LINE</p>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <p class="tt-c">THE DESK ACCEPTS TRAFFIC IN FOUR
+        CLASSES: PROSPECT, VENTURE, PRESS,
+        OTHER. ROUTE YOURS AND RECORD.</p>
+        <p class="tt-w">WIRE ..... CONTACTANDREWCALEBINTL
+        @GMAIL.COM</p>
+        <p class="tt-w">DESK ..... CH 06 TRANSMISSION</p>
+        <p class="tt-c">EVERY TRANSMISSION IS FILED UNDER
+        THE DAY'S REF NUMBER AND ANSWERED.
+        NO EXCEPTIONS.</p>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <p class="tt-ix"><a href="#contact" data-ch="CH 06" data-name="TRANSMISSION">GO TO THE TRAFFIC DESK &#9654;</a></p>
+      </article>
+
+      <article class="tt-page" id="tt-888" data-page="888" data-pname="Cipher Desk">
+        <p class="tt-dh tt-m">CIPHER DESK</p>
+        <p class="tt-b">NOT LISTED IN THE INDEX. GOOD.</p>
+        <p class="tt-sep" aria-hidden="true"></p>
+        <p class="tt-c">AFTER DARK, SKYWAVE 99.9 SOMETIMES
+        CARRIES NUMBERS. FIVE GROUPS, TWO
+        FIGURES EACH. READ ROW THEN COLUMN
+        AGAINST THE SQUARE BELOW.</p>
+        <pre class="tt-square tt-w" aria-label="Cipher square">
+    1 2 3 4 5
+  1 A B C D E
+  2 F G H I K
+  3 L M N O P
+  4 Q R S T U
+  5 V W X Y Z</pre>
+        <p class="tt-c">J FILES UNDER I. THE WORD FOLLOWS
+        THE BROADCAST DAY.</p>
+        <p class="tt-g jsonly">SPEAK THE WORD TO THE TRAFFIC DESK
+        CODEWORD FIELD. WE WILL KNOW YOU
+        WERE REALLY LISTENING.</p>
+      </article>
+    </div>
+    <div class="tt-panel">
+      <div class="tt-keys" role="group" aria-label="Teletext keypad">
+        <button type="button" data-d="1">1</button><button type="button" data-d="2">2</button><button type="button" data-d="3">3</button><button type="button" data-d="4">4</button><button type="button" data-d="5">5</button>
+        <button type="button" data-d="6">6</button><button type="button" data-d="7">7</button><button type="button" data-d="8">8</button><button type="button" data-d="9">9</button><button type="button" data-d="0">0</button>
+      </div>
+      <div class="tt-fast" role="group" aria-label="Colour keys">
+        <button type="button" class="fk-r" data-go="100">Index</button>
+        <button type="button" class="fk-g" data-go="200">Services</button>
+        <button type="button" class="fk-y" data-go="500">Today</button>
+        <button type="button" class="fk-b" data-go="600">Contact</button>
+      </div>
+      <p class="tt-hint osd" aria-hidden="true">Key a page number &middot; 100&ndash;600</p>
+    </div>
+  </div>
 </section>
 </main>
 

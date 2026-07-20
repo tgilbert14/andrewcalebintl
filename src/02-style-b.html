@@ -812,6 +812,458 @@ html.rm #carLane { display: none; }
 html.rm #carLane.rm-show { display: block; }
 
 /* ============================================================
+   CH 06 — THE TRAFFIC DESK (structured transmission intake)
+   ============================================================ */
+/* .nojs-actions is the no-JS twin of the desk's action row; html.js swaps
+   them (the desk and other JS-only chrome exist only under html.js).
+   NB: the head noscript block cannot hide elements that declare their own
+   display (it loses the cascade to this body stylesheet) — which is why
+   .boot and .fleet-actions are gated here too, fixing a latent no-JS bug
+   where the boot curtain never lifted. */
+html.js .tape-card .nojs-actions { display: none; }
+/* Visually-hidden utility (screen-reader text) */
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* Copy that instructs JS-only chrome hides with it */
+html:not(.js) .jsonly { display: none; }
+html:not(.js) .desk { display: none; }
+html:not(.js) .tt-panel { display: none; }
+html:not(.js) .rc-js { display: none; }
+html:not(.js) .boot { display: none; }
+html:not(.js) .fleet-actions { display: none; }
+.desk { margin-top: 4px; }
+.desk-class {
+  border: 1px solid rgba(255,204,0,.35);
+  padding: 12px 14px 10px; margin-bottom: 18px;
+  display: flex; gap: 10px; flex-wrap: wrap;
+}
+.desk-class legend {
+  font-family: var(--font-osd); font-size: 16px;
+  letter-spacing: .18em; text-transform: uppercase;
+  color: var(--osd-amber); padding: 0 8px;
+}
+.desk-class label { cursor: pointer; position: relative; }
+.desk-class input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.desk-class span {
+  display: inline-block;
+  font-family: var(--font-osd); font-size: 16px;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--chrome);
+  border: 1px solid rgba(233,237,245,.35);
+  padding: 5px 12px 2px;
+  transition: background .15s ease, color .15s ease;
+}
+.desk-class input:checked + span { color: var(--void); background: var(--osd-amber); border-color: var(--osd-amber); }
+.desk-class input:focus-visible + span { outline: 2px solid var(--signal-cyan); outline-offset: 3px; }
+.desk-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.desk-field {
+  display: block;
+  font-family: var(--font-osd); font-size: 15px;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: rgba(233,237,245,.75);
+  margin-bottom: 14px;
+}
+.desk-field input, .desk-field textarea {
+  display: block; width: 100%; margin-top: 6px;
+  background: rgba(11,0,26,.7); color: var(--osd-amber);
+  border: 1px solid rgba(255,204,0,.4); border-radius: 2px;
+  font-family: var(--font-osd); font-size: 18px; letter-spacing: .05em;
+  padding: 8px 10px 6px;
+}
+.desk-field input:focus-visible, .desk-field textarea:focus-visible {
+  outline: 2px solid var(--signal-cyan); outline-offset: 2px;
+}
+.desk-field textarea { resize: vertical; min-height: 110px; line-height: 1.4; text-transform: none; }
+.desk ::placeholder { color: rgba(255,204,0,.6); opacity: 1; }
+.desk-deck { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 4px 0 10px; }
+.desk-reels { width: 150px; height: auto; }
+.desk-vu { width: 90px; height: auto; }
+#deskTapeL, #deskTapeR { transform-box: fill-box; transform-origin: center; }
+.desk-tapecount { font-size: 16px; line-height: 1.5; }
+.desk-status {
+  font-family: var(--font-osd); font-size: 16px;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: rgba(0,242,255,.85);
+  min-height: 1.4em; margin-bottom: 12px;
+}
+.desk-status.hot { color: var(--osd-amber); }
+.btn-key {
+  background: rgba(11,0,26,.5); cursor: pointer;
+  border: 1px solid rgba(0,242,255,.5); color: var(--signal-cyan);
+  font-family: var(--font-osd); font-size: 16px;
+  letter-spacing: .12em; text-transform: uppercase;
+  padding: 10px 16px 7px;
+  transition: box-shadow .18s ease;
+}
+.btn-key:hover { box-shadow: 0 0 14px rgba(0,242,255,.4); }
+
+/* ============================================================
+   CH 07 — ACI TEXT (teletext service)
+   ============================================================ */
+.tt-set { max-width: 780px; margin: 0 auto; }
+.tt-screen {
+  position: relative;
+  background: #050014;
+  border: 2px solid rgba(51,255,51,.18);
+  border-radius: 10px;
+  padding: clamp(14px, 3vw, 26px) clamp(16px, 4vw, 40px) clamp(18px, 3vw, 30px);
+  font-family: var(--font-osd);
+  font-size: clamp(16px, 2.3vw, 21px);
+  line-height: 1.35;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  box-shadow: inset 0 0 70px rgba(20,0,200,.22), 0 24px 60px rgba(0,0,0,.55);
+  text-shadow: 1px 0 rgba(255,0,60,.22), -1px 0 rgba(0,120,255,.22);
+}
+.tt-head {
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  color: #f4f4ff;
+  border-bottom: 1px solid rgba(51,255,51,.25);
+  padding-bottom: 6px; margin-bottom: 16px;
+}
+.tt-pno { color: #ffe400; }
+.tt-pno.err { color: var(--red-rec); }
+.tt-clk { color: #00f2ff; font-variant-numeric: tabular-nums; }
+.tt-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.tt-page + .tt-page { margin-top: 40px; }
+.tt-set.live .tt-page + .tt-page { margin-top: 0; }
+.tt-set.live .tt-page[hidden] { display: none; }
+.tt-set.live .tt-screen { min-height: 29em; }
+.tt-page p { margin-bottom: 12px; max-width: 100%; }
+.tt-dh { font-size: 2em; line-height: 1.05; margin-bottom: 12px; }
+.tt-y { color: #ffe400; }
+.tt-c { color: #00f2ff; }
+.tt-g { color: #33ff33; }
+.tt-m { color: #ff5fff; }
+.tt-w { color: #f4f4ff; }
+.tt-b { display: inline-block; background: var(--boot-blue); color: #f4f4ff; padding: 2px 10px 0; }
+.tt-sep {
+  height: .55em; margin: 16px 0;
+  background: repeating-linear-gradient(90deg,
+    rgba(255,0,255,.8) 0 .6em, rgba(0,242,255,.8) .6em 1.2em,
+    rgba(255,228,0,.8) 1.2em 1.8em, transparent 1.8em 2.4em);
+}
+.tt-ix a {
+  display: flex; align-items: baseline; gap: 10px;
+  color: #f4f4ff; text-decoration: none; padding: 3px 0;
+}
+.tt-ix a:hover, .tt-ix a:focus-visible { color: #ffe400; }
+.tt-dots { flex: 1; border-bottom: 2px dotted rgba(51,255,51,.45); transform: translateY(-4px); }
+.tt-square {
+  font-family: var(--font-osd); font-size: 1em;
+  line-height: 1.55; letter-spacing: .18em;
+  background: rgba(20,0,200,.28);
+  display: inline-block; padding: 8px 16px; margin-bottom: 12px;
+  white-space: pre;
+}
+.tt-art { margin-bottom: 10px; }
+.tt-art svg { display: block; width: min(300px, 70%); height: auto; }
+.tt-hubs .tt-hubrow { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+.tt-hubs .tt-hubrow .h { color: #f4f4ff; min-width: 9ch; }
+.tt-hubs .tt-hubrow .t { color: #ffe400; min-width: 6ch; font-variant-numeric: tabular-nums; }
+.tt-hubs .tt-hubrow .c { color: #00f2ff; }
+.tt-panel {
+  display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+  justify-content: space-between; margin-top: 14px;
+}
+.tt-keys { display: grid; grid-template-columns: repeat(5, 46px); gap: 6px; }
+.tt-keys button {
+  height: 40px; cursor: pointer;
+  background: rgba(11,0,26,.7);
+  border: 1px solid rgba(51,255,51,.4); color: #33ff33;
+  font-family: var(--font-osd); font-size: 20px; padding-top: 3px;
+}
+.tt-keys button:hover { background: rgba(51,255,51,.12); }
+.tt-fast { display: flex; gap: 6px; flex-wrap: wrap; }
+.tt-fast button {
+  font-family: var(--font-osd); font-size: 15px;
+  letter-spacing: .08em; text-transform: uppercase;
+  cursor: pointer; border: none; color: #05000e;
+  padding: 9px 13px 5px;
+}
+.tt-fast button:hover { filter: brightness(1.15); }
+.fk-r { background: #ff2b2b; }
+.fk-g { background: #33ff33; }
+.fk-y { background: #ffe400; }
+.fk-b { background: #00a2ff; }
+.tt-hint { font-size: 15px; color: rgba(233,237,245,.55); width: 100%; }
+/* Decoder row-paint: rows pop in scanline order on page flip */
+.tt-set.live .tt-page.flip > * {
+  animation: ttrow .4s steps(2, end) both;
+  animation-delay: calc(var(--r, 0) * 42ms);
+}
+@keyframes ttrow { from { opacity: 0; } }
+html.rm .tt-set.live .tt-page.flip > * { animation: none; }
+
+/* ============================================================
+   THE REMOTE (Popover API; top layer, no z-index war)
+   ============================================================ */
+#remote {
+  /* Base display:none is the no-Popover fallback: engines without the
+     API have no UA [popover] rule and drop the :popover-open rule as
+     invalid, which would otherwise leave this panel stuck on screen. */
+  display: none;
+  position: fixed; inset: auto 18px 76px auto; margin: 0;
+  width: 258px;
+  background: linear-gradient(180deg, #1a1a24, #0c0c14);
+  border: 1px solid rgba(233,237,245,.2);
+  border-radius: 14px;
+  padding: 14px;
+  color: var(--chrome);
+  box-shadow: 0 30px 70px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.08);
+  opacity: 1; transform: none;
+  transition: opacity .22s ease, transform .22s ease,
+    display .22s allow-discrete, overlay .22s allow-discrete;
+}
+#remote:popover-open { display: flex; flex-direction: column; gap: 12px; }
+@starting-style {
+  #remote:popover-open { opacity: 0; transform: translateY(14px) scale(.97); }
+}
+/* Closed state mirrors the entry pose so the exit actually interpolates
+   during the allow-discrete hold instead of freezing fully opaque */
+#remote:not(:popover-open) { opacity: 0; transform: translateY(14px) scale(.97); }
+#remote::backdrop { background: rgba(5,0,14,.3); }
+.rc-brand {
+  display: flex; justify-content: space-between; align-items: center;
+  font-family: var(--font-osd); font-size: 15px;
+  letter-spacing: .3em; text-transform: uppercase;
+  color: rgba(233,237,245,.6);
+}
+.rc-brand span:first-child { color: var(--neon-pink); }
+.rc-ir {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #2a0b0b; box-shadow: inset 0 0 4px #000;
+}
+.rc-ir.tx { background: var(--red-rec); box-shadow: 0 0 10px rgba(255,43,43,.9); }
+.rc-chans { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.rc-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.rc-key {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; padding: 7px 2px 5px;
+  background: #16161f;
+  border: 1px solid rgba(233,237,245,.18); border-radius: 8px;
+  cursor: pointer; text-decoration: none; color: var(--chrome);
+  box-shadow: 0 2px 0 rgba(0,0,0,.6);
+}
+.rc-key b { font-family: var(--font-osd); font-size: 18px; font-weight: 400; color: var(--osd-amber); line-height: 1.1; }
+.rc-key i { font-style: normal; font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: rgba(233,237,245,.55); }
+.rc-key:hover { border-color: var(--signal-cyan); }
+.rc-key:hover b { color: var(--signal-cyan); }
+.rc-key:active { transform: translateY(1px); box-shadow: 0 1px 0 rgba(0,0,0,.6); }
+.rc-codes {
+  display: flex; flex-direction: column; gap: 3px;
+  font-family: var(--font-osd); font-size: 14px;
+  letter-spacing: .06em; text-transform: uppercase;
+  color: rgba(233,237,245,.5);
+  border-top: 1px solid rgba(233,237,245,.12); padding-top: 9px;
+}
+.rc-codes-t { color: var(--osd-amber); letter-spacing: .25em; }
+
+/* OSD burn-through must stay legible when the fixed HUD crosses
+   same-colored page content (the tape gauge over the fleet map's amber
+   corner label, the clock over the portrait caption): a 1px dark edge
+   under the glow — real OSDs carry an edge, that's why they read. */
+.hud .osd {
+  text-shadow:
+    1px 0 0 rgba(5,0,14,.95), -1px 0 0 rgba(5,0,14,.95),
+    0 1px 0 rgba(5,0,14,.95), 0 -1px 0 rgba(5,0,14,.95),
+    0 0 10px rgba(255,204,0,.6), 2px 2px 0 rgba(0,0,0,.85);
+}
+
+/* ============================================================
+   SCROLL FILM — the broadcast day arc
+   Scroll is the evening: the hero sun sets behind the grid as you
+   leave CH 01, the world deepens from violet dusk toward midnight,
+   stars come out over the fixed glow, and every channel's content
+   rises into frame as it enters the viewport. All of it is CSS
+   scroll/view timelines — zero JS, zero rAF cost — fenced so
+   unsupporting browsers simply keep today's page. Scroll is never
+   hijacked; these read position, they don't steer it.
+   ============================================================ */
+.fx-nightfall, .fx-nightstars, .fx-moon { display: none; }
+@supports (animation-timeline: scroll()) {
+  .fx-nightfall {
+    display: block; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background: linear-gradient(180deg, rgba(2,0,10,.95), rgba(4,0,16,.82) 55%, rgba(9,2,26,.6));
+    opacity: 0;
+    animation: nightfall 1s linear both;
+    animation-timeline: scroll(root);
+  }
+  /* An evening is not a dimmer slider: hold dusk through the fleet, spend
+     the light across ethos->channels (the blue-hour plunge), then simply
+     BE night — which makes the practicals read hotter by contrast.
+     Terminal stays <= .65: the NO SIGNAL card and .5-alpha captions are
+     the legibility floor. */
+  @keyframes nightfall {
+    0% { opacity: 0; } 18% { opacity: .1; } 45% { opacity: .46; }
+    72% { opacity: .56; } 100% { opacity: .62; }
+  }
+  .fx-nightstars {
+    display: block; position: fixed; inset: 0 0 26% 0; z-index: -1; pointer-events: none;
+    background-image:
+      radial-gradient(1.5px 1.5px at 31px 44px, rgba(255,255,255,.95), transparent 1.5px),
+      radial-gradient(1.5px 1.5px at 118px 152px, rgba(255,255,255,.9), transparent 1.5px),
+      radial-gradient(2px 2px at 210px 80px, rgba(0,242,255,.9), transparent 2.5px),
+      radial-gradient(1.5px 1.5px at 255px 200px, rgba(255,204,0,.85), transparent 1.5px),
+      radial-gradient(1.5px 1.5px at 160px 250px, rgba(255,0,255,.8), transparent 1.5px),
+      radial-gradient(2px 2px at 68px 280px, rgba(255,255,255,.85), transparent 2.5px);
+    background-size: 260px 260px;
+    -webkit-mask-image: linear-gradient(180deg, #000 45%, transparent);
+    mask-image: linear-gradient(180deg, #000 45%, transparent);
+    opacity: 0;
+    animation: nightstars 1s linear both;
+    animation-timeline: scroll(root);
+  }
+  /* First stars ignite inside the nightfall plunge, so cause (dark falls)
+     and effect (stars appear) read as one beat */
+  @keyframes nightstars {
+    0%, 18% { opacity: 0; } 32% { opacity: .4; }
+    60% { opacity: .7; } 100% { opacity: .95; }
+  }
+  /* The sun set in act one; something has to rise for act three */
+  .fx-moon {
+    display: block; position: fixed; top: 13vh; right: 9vw; z-index: -1; pointer-events: none;
+    width: clamp(44px, 5.5vw, 78px); aspect-ratio: 1; border-radius: 50%;
+    background: radial-gradient(circle at 38% 34%, #fdfeff 0%, #cfd8ec 55%, rgba(207,216,236,0) 72%);
+    box-shadow: 0 0 34px rgba(233,237,245,.28);
+    opacity: 0;
+    animation: moonrise 1s linear both;
+    animation-timeline: scroll(root);
+  }
+  /* The climb must be legible across the back half — hold until the
+     operator, then a real 17vh rise through teletext to the finale */
+  @keyframes moonrise {
+    0%, 50% { opacity: 0; translate: 0 17vh; }
+    72% { opacity: .8; }
+    100% { opacity: .9; translate: 0 0; }
+  }
+}
+@supports (animation-timeline: view()) {
+  /* The sky dies WITH its sun: an afterglow veil over the lower sky
+     (a hero-sky pseudo, so it paints under the disc) turns the amber
+     band to violet as the hero exits — the match dissolve into the
+     night world below, instead of a day/night splice. */
+  .hero-sky::after {
+    content: '';
+    position: absolute; inset: 30% 0 0; pointer-events: none;
+    background: linear-gradient(180deg, rgba(18,2,48,0), #250a4e 55%, #140333);
+    opacity: 0;
+    animation: skycool 1s linear both;
+    animation-timeline: view();
+    animation-range: exit 0% exit 70%;
+  }
+  @keyframes skycool { to { opacity: 1; } }
+  /* The sun sets as CH 01 leaves the frame — and the set is WITNESSED:
+     the range ends while the hero still fills the viewport, and the
+     lamp reddens, squashes on the horizon, and dies as it sinks.
+     `translate`/`scale` (not transform) so the pointer parallax
+     survives; filter takes the box-shadow glow down with the disc. */
+  .hero-sun {
+    animation: sunset 1s linear both;
+    animation-timeline: view();
+    animation-range: exit 0% exit 58%;
+  }
+  @keyframes sunset {
+    55% { filter: brightness(.8) saturate(1.3) hue-rotate(-12deg); }
+    to { translate: 0 26vh; scale: 1 .82; filter: brightness(.42) saturate(1.55) hue-rotate(-24deg); }
+  }
+  /* Channel entrance choreography: each element rises as IT enters,
+     so tall sections stage themselves naturally. from{}-only keyframes:
+     animation:none (RM) is the designed final state. */
+  .channel > .ch-tab,
+  .channel > .section-title,
+  .channel > .section-kicker,
+  .channel > .fleet-script,
+  .channel > .ethos-pull,
+  .channel > .tape-micro,
+  .channel .fleet-wrap, .channel .fleet-log,
+  .channel .contact-wrap, .channel .tt-set,
+  .channel .operator-grid > *,
+  .ethos-item, .monitor {
+    animation: chrise 1s cubic-bezier(.2, .6, .25, 1) both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 42%;
+  }
+  @keyframes chrise { from { opacity: 0; translate: 0 30px; } }
+  /* Diagonal cascade across the card grids */
+  .ethos-item:nth-child(2), .monitor:nth-child(3n+2) { animation-range: entry 8% entry 50%; }
+  .ethos-item:nth-child(3), .monitor:nth-child(3n) { animation-range: entry 16% entry 58%; }
+  .ethos-item:nth-child(4) { animation-range: entry 24% entry 66%; }
+  /* Entrance variety — the grammar must not repeat identically seven
+     times. The operator two-shot converges from its two sides; the
+     fleet map, the film's biggest prop, gets a focus-pull as the
+     sat-link acquires. animation-name only: timing/range stay family. */
+  .channel .operator-grid > :first-child { animation-name: chrise-l; }
+  .channel .operator-grid > .dossier { animation-name: chrise-r; }
+  @keyframes chrise-l { from { opacity: 0; translate: -34px 16px; } }
+  @keyframes chrise-r { from { opacity: 0; translate: 34px 16px; } }
+  .channel .fleet-wrap { animation-name: chrise-map; }
+  @keyframes chrise-map { from { opacity: 0; translate: 0 30px; filter: blur(5px) saturate(.6); } }
+  /* The finale belongs to the scroll, not a one-shot JS flash: the
+     footer stages itself, and the sign-off settles like a title card. */
+  .footer .cheat, .footer .cheat-sub, .footer a.flip,
+  .footer .signoff, .footer .legal {
+    animation: chrise 1s cubic-bezier(.2, .6, .25, 1) both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 45%;
+  }
+  .footer .signoff { animation-name: signoff-settle; }
+  @keyframes signoff-settle { from { opacity: 0; letter-spacing: .7em; } }
+}
+html.rm .fx-nightfall, html.rm .fx-nightstars, html.rm .fx-moon { animation: none; }
+html.rm .hero-sun, html.rm .hero-sky::after { animation: none; }
+html.rm .footer .cheat, html.rm .footer .cheat-sub, html.rm .footer a.flip,
+html.rm .footer .signoff, html.rm .footer .legal { animation: none; }
+html.rm .channel > .ch-tab, html.rm .channel > .section-title,
+html.rm .channel > .section-kicker, html.rm .channel > .fleet-script,
+html.rm .channel > .ethos-pull, html.rm .channel > .tape-micro,
+html.rm .channel .fleet-wrap, html.rm .channel .fleet-log,
+html.rm .channel .contact-wrap, html.rm .channel .tt-set,
+html.rm .channel .operator-grid > *,
+html.rm .ethos-item, html.rm .monitor { animation: none; }
+
+/* ============================================================
+   TAPE REMAINING — zero-JS scroll-driven reel gauge (HUD)
+   Scroll position IS tape position. CSS scroll timelines only;
+   hidden entirely where unsupported so the HUD reads complete.
+   NB: animation-timeline must come AFTER the animation shorthand.
+   ============================================================ */
+.tapegauge { display: none; }
+/* Registered at top level (supported long before scroll timelines), so a
+   partial engine degrades to a frozen "REM 0:46", never a lying "0:00" */
+@property --tgrem { syntax: '<integer>'; inherits: false; initial-value: 46; }
+@supports (animation-timeline: scroll()) {
+  .tapegauge { display: inline-flex; align-items: center; gap: 7px; margin-left: 14px; vertical-align: -6px; }
+  .tapegauge svg { width: 58px; height: auto; display: block; }
+  .tg-tape, .tg-spin { transform-box: fill-box; transform-origin: center; }
+  .tg-supply .tg-tape {
+    animation: tgshrink 1s linear both;
+    animation-timeline: scroll(root);
+  }
+  .tg-takeup .tg-tape {
+    animation: tggrow 1s linear both;
+    animation-timeline: scroll(root);
+  }
+  .tg-spin {
+    animation: tgspin 1s linear both;
+    animation-timeline: scroll(root);
+  }
+  @keyframes tgshrink { to { transform: scale(.55); } }
+  @keyframes tggrow { from { transform: scale(.55); } to { transform: scale(1); } }
+  @keyframes tgspin { to { transform: rotate(3.5turn); } }
+  .tg-rem { font-size: .85em; }
+  .tg-rem::after {
+    counter-reset: tgrem var(--tgrem);
+    content: "REM 0:" counter(tgrem, decimal-leading-zero);
+    animation: tgcount 1s linear both;
+    animation-timeline: scroll(root);
+  }
+  @keyframes tgcount { from { --tgrem: 46; } to { --tgrem: 0; } }
+}
+html.rm .tapegauge .tg-tape,
+html.rm .tapegauge .tg-spin,
+html.rm .tapegauge .tg-rem::after { animation: none; }
+
+/* ============================================================
    RESPONSIVE
    ============================================================ */
 @media (max-width: 940px) {
@@ -848,7 +1300,20 @@ html.rm #carLane.rm-show { display: block; }
   #car { width: 300px; }
   #carLane { bottom: 6px; height: 95px; }
   .hud .np { display: none; }
+  /* The numbers station still gets its visual channel on phones (the
+     :not([hidden]) guard covers FM-off-mid-intercept, where radioOff
+     hides the ticker while .itc lingers) */
+  .hud .np.itc:not([hidden]) { display: inline-block; }
   .fleet-log { font-size: 16px; }
+  .tapegauge { display: none; }
+  .desk-row { grid-template-columns: 1fr; }
+  .tt-keys { grid-template-columns: repeat(5, 1fr); width: 100%; }
+  .tt-panel { justify-content: flex-start; }
+  #remote {
+    inset: auto 0 0 0; width: 100%;
+    border-radius: 14px 14px 0 0;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 /* Reduced motion: the look survives fully static.
@@ -882,5 +1347,20 @@ html.rm #carLane.rm-show { display: block; }
   .m-ping { animation: none; transform: scale(.8); opacity: .3; }
   #carLane { display: none; }
   .car-underglow { animation: none; }
+  .tt-set.live .tt-page.flip > * { animation: none; }
+  .tapegauge .tg-tape, .tapegauge .tg-spin, .tapegauge .tg-rem::after { animation: none; }
+  #remote { transition: none; }
+  .desk-class span { transition: none; }
+  .fx-nightfall, .fx-nightstars, .fx-moon { animation: none; }
+  .hero-sun, .hero-sky::after { animation: none; }
+  .footer .cheat, .footer .cheat-sub, .footer a.flip,
+  .footer .signoff, .footer .legal { animation: none; }
+  .channel > .ch-tab, .channel > .section-title, .channel > .section-kicker,
+  .channel > .fleet-script, .channel > .ethos-pull, .channel > .tape-micro,
+  .channel .fleet-wrap, .channel .fleet-log, .channel .contact-wrap,
+  .channel .tt-set, .channel .operator-grid > *,
+  .ethos-item, .monitor { animation: none; }
 }
+html.rm #remote { transition: none; }
+html.rm .desk-class span { transition: none; }
 </style>

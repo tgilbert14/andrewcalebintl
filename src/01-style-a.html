@@ -355,6 +355,11 @@ html.rm .hud .audio-btn.pulse { animation: none; }
 }
 .hud .np .np-inner { display: inline-block; padding-left: 100%; animation: npmarq 12s linear infinite; }
 .hud .np[hidden] { display: none; }
+/* During a Skywave intercept the numbers own the ticker: no marquee,
+   signal-cyan, and wide enough for the FULL five-group line including
+   the "INTERCEPT ▸" prefix (~34 glyphs + .06em tracking) */
+.hud .np.itc { color: var(--signal-cyan); max-width: 40ch; }
+.hud .np.itc .np-inner { animation: none; padding-left: 0; }
 @keyframes npmarq { to { transform: translateX(-100%); } }
 html.rm .hud .np .np-inner { animation: none; padding-left: 0; }
 .hud #hudCh.flash { color: var(--nav-acc, var(--osd-amber)); text-shadow: 0 0 10px currentColor; }
@@ -475,3 +480,31 @@ html.rm .hero-grid { animation: none; }
 .hero-palm.left { left: -34px; width: clamp(180px, 26vw, 330px); }
 .hero-palm.right { right: -30px; width: clamp(130px, 18vw, 230px); transform: scaleX(-1) translate(calc(var(--px, 0) * 10px), 0); }
 .hero-palm svg { width: 100%; height: auto; display: block; }
+
+/* ============================================================
+   EJECT SEQUENCE — cross-document View Transitions (Side A <-> B)
+   The flip link finally performs the physical act: this page drops
+   into the deck, the other side rises. Firefox ignores the at-rule
+   and gets today's plain navigation (true progressive enhancement).
+   Transform/opacity only.
+   ============================================================ */
+@view-transition { navigation: auto; }
+::view-transition-old(root) {
+  animation: vt-eject .3s cubic-bezier(.4, 0, .8, .6) both;
+}
+::view-transition-new(root) {
+  animation: vt-insert .38s cubic-bezier(.16, .84, .44, 1) both;
+}
+@keyframes vt-eject {
+  to { transform: translateY(9%) scale(.965); opacity: 0; }
+}
+@keyframes vt-insert {
+  from { transform: translateY(-7%) scale(.975); opacity: 0; }
+}
+/* Dual-path RM kill: OS setting disables the transition entirely… */
+@media (prefers-reduced-motion: reduce) {
+  @view-transition { navigation: none; }
+}
+/* …and the on-page FX toggle gets an instant cut. */
+html.rm::view-transition-old(root),
+html.rm::view-transition-new(root) { animation: none; }

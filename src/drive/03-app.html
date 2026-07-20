@@ -12,6 +12,17 @@
   var fxPref = store.get('aci_fx'); /* shared with Side A: one tape, one FX law */
   if (fxPref === '0') RM = true; else if (fxPref === '1') RM = false;
   if (RM) document.documentElement.classList.add('rm');
+  /* A prerendered document computed RM before the user may have toggled
+     FX on the referring page — re-read at activation. */
+  if (document.prerendering) {
+    document.addEventListener('prerenderingchange', function () {
+      var p2 = store.get('aci_fx');
+      if (p2 === '0') RM = true;
+      else if (p2 === '1') RM = false;
+      else { try { RM = rmMq ? rmMq.matches : false; } catch (e) {} }
+      document.documentElement.classList.toggle('rm', RM);
+    });
+  }
 
   var COARSE = false;
   try { COARSE = matchMedia('(hover: none) and (pointer: coarse)').matches; } catch (e) {}
