@@ -1577,6 +1577,17 @@ html.rm .tt-set.live .tt-page.flip > * { animation: none; }
 }
 .rc-codes-t { color: var(--osd-amber); letter-spacing: .25em; }
 
+/* OSD burn-through must stay legible when the fixed HUD crosses
+   same-colored page content (the tape gauge over the fleet map's amber
+   corner label, the clock over the portrait caption): a 1px dark edge
+   under the glow — real OSDs carry an edge, that's why they read. */
+.hud .osd {
+  text-shadow:
+    1px 0 0 rgba(5,0,14,.95), -1px 0 0 rgba(5,0,14,.95),
+    0 1px 0 rgba(5,0,14,.95), 0 -1px 0 rgba(5,0,14,.95),
+    0 0 10px rgba(255,204,0,.6), 2px 2px 0 rgba(0,0,0,.85);
+}
+
 /* ============================================================
    SCROLL FILM — the broadcast day arc
    Scroll is the evening: the hero sun sets behind the grid as you
@@ -1637,9 +1648,11 @@ html.rm .tt-set.live .tt-page.flip > * { animation: none; }
     animation: moonrise 1s linear both;
     animation-timeline: scroll(root);
   }
+  /* The climb must be legible across the back half — hold until the
+     operator, then a real 17vh rise through teletext to the finale */
   @keyframes moonrise {
-    0%, 45% { opacity: 0; translate: 0 6vh; }
-    75% { opacity: .8; }
+    0%, 50% { opacity: 0; translate: 0 17vh; }
+    72% { opacity: .8; }
     100% { opacity: .9; translate: 0 0; }
   }
 }
