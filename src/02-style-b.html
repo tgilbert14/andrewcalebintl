@@ -821,6 +821,10 @@ html.rm #carLane.rm-show { display: block; }
    .boot and .fleet-actions are gated here too, fixing a latent no-JS bug
    where the boot curtain never lifted. */
 html.js .tape-card .nojs-actions { display: none; }
+/* Visually-hidden utility (screen-reader text) */
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* Copy that instructs JS-only chrome hides with it */
+html:not(.js) .jsonly { display: none; }
 html:not(.js) .desk { display: none; }
 html:not(.js) .tt-panel { display: none; }
 html:not(.js) .rc-js { display: none; }
@@ -869,7 +873,7 @@ html:not(.js) .fleet-actions { display: none; }
   outline: 2px solid var(--signal-cyan); outline-offset: 2px;
 }
 .desk-field textarea { resize: vertical; min-height: 110px; line-height: 1.4; text-transform: none; }
-.desk ::placeholder { color: rgba(255,204,0,.35); opacity: 1; }
+.desk ::placeholder { color: rgba(255,204,0,.6); opacity: 1; }
 .desk-deck { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 4px 0 10px; }
 .desk-reels { width: 150px; height: auto; }
 .desk-vu { width: 90px; height: auto; }
@@ -994,6 +998,10 @@ html.rm .tt-set.live .tt-page.flip > * { animation: none; }
    THE REMOTE (Popover API; top layer, no z-index war)
    ============================================================ */
 #remote {
+  /* Base display:none is the no-Popover fallback: engines without the
+     API have no UA [popover] rule and drop the :popover-open rule as
+     invalid, which would otherwise leave this panel stuck on screen. */
+  display: none;
   position: fixed; inset: auto 18px 76px auto; margin: 0;
   width: 258px;
   background: linear-gradient(180deg, #1a1a24, #0c0c14);
@@ -1010,6 +1018,9 @@ html.rm .tt-set.live .tt-page.flip > * { animation: none; }
 @starting-style {
   #remote:popover-open { opacity: 0; transform: translateY(14px) scale(.97); }
 }
+/* Closed state mirrors the entry pose so the exit actually interpolates
+   during the allow-discrete hold instead of freezing fully opaque */
+#remote:not(:popover-open) { opacity: 0; transform: translateY(14px) scale(.97); }
 #remote::backdrop { background: rgba(5,0,14,.3); }
 .rc-brand {
   display: flex; justify-content: space-between; align-items: center;
@@ -1217,8 +1228,10 @@ html.rm .ethos-item, html.rm .monitor { animation: none; }
    NB: animation-timeline must come AFTER the animation shorthand.
    ============================================================ */
 .tapegauge { display: none; }
+/* Registered at top level (supported long before scroll timelines), so a
+   partial engine degrades to a frozen "REM 0:46", never a lying "0:00" */
+@property --tgrem { syntax: '<integer>'; inherits: false; initial-value: 46; }
 @supports (animation-timeline: scroll()) {
-  @property --tgrem { syntax: '<integer>'; inherits: false; initial-value: 46; }
   .tapegauge { display: inline-flex; align-items: center; gap: 7px; margin-left: 14px; vertical-align: -6px; }
   .tapegauge svg { width: 58px; height: auto; display: block; }
   .tg-tape, .tg-spin { transform-box: fill-box; transform-origin: center; }
@@ -1287,6 +1300,10 @@ html.rm .tapegauge .tg-rem::after { animation: none; }
   #car { width: 300px; }
   #carLane { bottom: 6px; height: 95px; }
   .hud .np { display: none; }
+  /* The numbers station still gets its visual channel on phones (the
+     :not([hidden]) guard covers FM-off-mid-intercept, where radioOff
+     hides the ticker while .itc lingers) */
+  .hud .np.itc:not([hidden]) { display: inline-block; }
   .fleet-log { font-size: 16px; }
   .tapegauge { display: none; }
   .desk-row { grid-template-columns: 1fr; }

@@ -72,8 +72,10 @@ carrier swells, a minor interval signal plays twice, and five two-figure
 groups beep out (dual sines pitched by digit, scheduled on the WebAudio
 clock). The ticker narrates in step; the `intercepting` flag keeps
 `npUpdate()` out until MSG ENDS (same ownership pattern as `spooling` on the
-tape counter). Afterwards the fleet log gets `INTERCEPT LOGGED, SEE TEXT P888`
-— the silent path for radio-off visitors. Debug: `window.__aciIntercept()`.
+tape counter). Afterwards the fleet log gets `INTERCEPT LOGGED, SEE TEXT P888`;
+the FIXED log pool also carries `INTERCEPT FILED, SEE TEXT P888` in its
+regular rotation (and the reduced-motion static log includes it), so the
+breadcrumb reaches radio-off visitors too — the loop's true silent path. Debug: `window.__aciIntercept()`.
 
 Decode: groups are row-col on P888's Polybius square → the day's codeword →
 the desk's codeword field → `[AUTH]` in the owner's inbox. That subject flag
@@ -85,9 +87,12 @@ is the point: it marks correspondents who actually explored the tape.
 opened by the declarative `popovertarget` chip in the HUD, animated in via
 `@starting-style` + `transition-behavior: allow-discrete`. Channel keys are
 real `data-ch` anchors, so they ride the existing nav delegation (burst +
-scroll + focus) and work no-JS; FX/FM/Rew delegate to the canonical buttons
-(`.click()` inside a real activation, so FM works first press); digits 1–7
-punch channels while it's open. Feature-detect hides the chip where popover
+scroll + focus) and work no-JS; FX/FM call the canonical functions directly
+(`toggleFx` / `setAudio`) so the audio resume runs inside the real
+activation — a synthetic `.click()` was observed leaving the context
+suspended on first press; only Rew delegates via `rewBtn.click()`. Digits
+1–7 punch channels while it's open (document-level capture handler, since
+popovers don't autofocus and the teletext dialer registered earlier). Feature-detect hides the chip where popover
 is unsupported. On phones it docks as a bottom sheet.
 
 ## Tape Remaining (HUD gauge)

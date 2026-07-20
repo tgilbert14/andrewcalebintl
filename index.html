@@ -15,6 +15,7 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
+<script>try{if(sessionStorage.getItem('aci_fx')==='0')document.documentElement.classList.add('rm')}catch(e){}</script>
 <noscript><style>.boot{display:none}.fleet-wrap,.fleet-log,.fleet-actions{display:none}</style></noscript>
 <script type="speculationrules">{"prerender":[{"urls":["drive/"],"eagerness":"moderate"}]}</script>
 </head>
@@ -376,8 +377,9 @@ html.rm .hud .audio-btn.pulse { animation: none; }
 .hud .np .np-inner { display: inline-block; padding-left: 100%; animation: npmarq 12s linear infinite; }
 .hud .np[hidden] { display: none; }
 /* During a Skywave intercept the numbers own the ticker: no marquee,
-   signal-cyan, wide enough for five groups */
-.hud .np.itc { color: var(--signal-cyan); max-width: 34ch; }
+   signal-cyan, and wide enough for the FULL five-group line including
+   the "INTERCEPT ▸" prefix (~34 glyphs + .06em tracking) */
+.hud .np.itc { color: var(--signal-cyan); max-width: 40ch; }
 .hud .np.itc .np-inner { animation: none; padding-left: 0; }
 @keyframes npmarq { to { transform: translateX(-100%); } }
 html.rm .hud .np .np-inner { animation: none; padding-left: 0; }
@@ -1351,6 +1353,10 @@ html.rm #carLane.rm-show { display: block; }
    .boot and .fleet-actions are gated here too, fixing a latent no-JS bug
    where the boot curtain never lifted. */
 html.js .tape-card .nojs-actions { display: none; }
+/* Visually-hidden utility (screen-reader text) */
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* Copy that instructs JS-only chrome hides with it */
+html:not(.js) .jsonly { display: none; }
 html:not(.js) .desk { display: none; }
 html:not(.js) .tt-panel { display: none; }
 html:not(.js) .rc-js { display: none; }
@@ -1399,7 +1405,7 @@ html:not(.js) .fleet-actions { display: none; }
   outline: 2px solid var(--signal-cyan); outline-offset: 2px;
 }
 .desk-field textarea { resize: vertical; min-height: 110px; line-height: 1.4; text-transform: none; }
-.desk ::placeholder { color: rgba(255,204,0,.35); opacity: 1; }
+.desk ::placeholder { color: rgba(255,204,0,.6); opacity: 1; }
 .desk-deck { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 4px 0 10px; }
 .desk-reels { width: 150px; height: auto; }
 .desk-vu { width: 90px; height: auto; }
@@ -1524,6 +1530,10 @@ html.rm .tt-set.live .tt-page.flip > * { animation: none; }
    THE REMOTE (Popover API; top layer, no z-index war)
    ============================================================ */
 #remote {
+  /* Base display:none is the no-Popover fallback: engines without the
+     API have no UA [popover] rule and drop the :popover-open rule as
+     invalid, which would otherwise leave this panel stuck on screen. */
+  display: none;
   position: fixed; inset: auto 18px 76px auto; margin: 0;
   width: 258px;
   background: linear-gradient(180deg, #1a1a24, #0c0c14);
@@ -1540,6 +1550,9 @@ html.rm .tt-set.live .tt-page.flip > * { animation: none; }
 @starting-style {
   #remote:popover-open { opacity: 0; transform: translateY(14px) scale(.97); }
 }
+/* Closed state mirrors the entry pose so the exit actually interpolates
+   during the allow-discrete hold instead of freezing fully opaque */
+#remote:not(:popover-open) { opacity: 0; transform: translateY(14px) scale(.97); }
 #remote::backdrop { background: rgba(5,0,14,.3); }
 .rc-brand {
   display: flex; justify-content: space-between; align-items: center;
@@ -1747,8 +1760,10 @@ html.rm .ethos-item, html.rm .monitor { animation: none; }
    NB: animation-timeline must come AFTER the animation shorthand.
    ============================================================ */
 .tapegauge { display: none; }
+/* Registered at top level (supported long before scroll timelines), so a
+   partial engine degrades to a frozen "REM 0:46", never a lying "0:00" */
+@property --tgrem { syntax: '<integer>'; inherits: false; initial-value: 46; }
 @supports (animation-timeline: scroll()) {
-  @property --tgrem { syntax: '<integer>'; inherits: false; initial-value: 46; }
   .tapegauge { display: inline-flex; align-items: center; gap: 7px; margin-left: 14px; vertical-align: -6px; }
   .tapegauge svg { width: 58px; height: auto; display: block; }
   .tg-tape, .tg-spin { transform-box: fill-box; transform-origin: center; }
@@ -1817,6 +1832,10 @@ html.rm .tapegauge .tg-rem::after { animation: none; }
   #car { width: 300px; }
   #carLane { bottom: 6px; height: 95px; }
   .hud .np { display: none; }
+  /* The numbers station still gets its visual channel on phones (the
+     :not([hidden]) guard covers FM-off-mid-intercept, where radioOff
+     hides the ticker while .itc lingers) */
+  .hud .np.itc:not([hidden]) { display: inline-block; }
   .fleet-log { font-size: 16px; }
   .tapegauge { display: none; }
   .desk-row { grid-template-columns: 1fr; }
@@ -1954,8 +1973,8 @@ document.documentElement.classList.add('js');
 <!-- THE REMOTE — top-layer VCR remote (Popover API). The declarative
      popovertarget pair works without JS; channel keys are real anchors that
      ride the existing data-ch nav delegation. JS-only keys carry .rc-js and
-     sit on the build's noscript hiding list. -->
-<div id="remote" popover aria-label="ACI remote control">
+     hide under the html:not(.js) law. -->
+<div id="remote" popover role="group" aria-label="ACI remote control">
   <div class="rc-brand" aria-hidden="true"><span>ACI</span> RC-86 <span class="rc-ir"></span></div>
   <div class="rc-chans">
     <a class="rc-key" href="#top" data-ch="CH 01" data-name="SIGNAL"><b>1</b><i>Signal</i></a>
@@ -1969,8 +1988,8 @@ document.documentElement.classList.add('js');
   <div class="rc-row">
     <button type="button" class="rc-key rc-js" id="rcRew" aria-label="Rewind to top"><b>&#9664;&#9664;</b><i>Rew</i></button>
     <a class="rc-key" href="drive/" aria-label="Eject: flip to Side B"><b>&#9167;</b><i>Side B</i></a>
-    <button type="button" class="rc-key rc-js" id="rcFx" aria-label="Toggle visual effects"><b>FX</b><i>Effects</i></button>
-    <button type="button" class="rc-key rc-js" id="rcFm" aria-label="Toggle radio"><b>FM</b><i>99.9</i></button>
+    <button type="button" class="rc-key rc-js" id="rcFx" aria-pressed="true" aria-label="Toggle visual effects"><b>FX</b><i>Effects</i></button>
+    <button type="button" class="rc-key rc-js" id="rcFm" aria-pressed="false" aria-label="Toggle radio"><b>FM</b><i>99.9</i></button>
     <button type="button" class="rc-key rc-js" id="rcShare" aria-label="Share current channel"><b>&#8599;</b><i>Share</i></button>
   </div>
   <div class="rc-codes">
@@ -1980,6 +1999,7 @@ document.documentElement.classList.add('js');
     <span>TEXT P888 &mdash; and then listen</span>
   </div>
 </div>
+<span id="rcStatus" class="vh" role="status" aria-live="polite"></span>
 
 <!-- NAV -->
 <nav class="tapenav" aria-label="Sections">
@@ -2240,7 +2260,7 @@ document.documentElement.classList.add('js');
           <a class="email" href="mailto:contactandrewcalebintl@gmail.com">contactandrewcalebintl@gmail.com</a><button class="copy-email" id="copyEmail" type="button" aria-label="Copy email address">[Copy]</button>
         </div>
         <!-- The Traffic Desk: JS-only enhancement over the always-working
-             mailto above (hidden by the build's noscript list). It composes
+             mailto above (hidden no-JS by the html:not(.js) law). It composes
              the mailto live; it never claims to "send" anything itself. -->
         <form class="desk" id="deskForm">
           <fieldset class="desk-class">
@@ -2259,7 +2279,8 @@ document.documentElement.classList.add('js');
             </label>
           </div>
           <label class="desk-field desk-msgfield">Message
-            <textarea id="deskMsg" maxlength="1400" rows="5" placeholder="Where do you want to go? Who do you need to meet?"></textarea>
+            <span id="deskMsgHint" class="vh">The tape holds 1400 characters; recording stops at the end of the tape.</span>
+            <textarea id="deskMsg" maxlength="1400" rows="5" aria-describedby="deskMsgHint" placeholder="Where do you want to go? Who do you need to meet?"></textarea>
           </label>
           <div class="desk-deck" aria-hidden="true">
             <svg class="desk-reels" viewBox="0 0 150 44" xmlns="http://www.w3.org/2000/svg">
@@ -2306,11 +2327,11 @@ document.documentElement.classList.add('js');
 <!-- Pages are real stacked articles: with no JS this section reads top to
      bottom as a plain document. The JS module collapses it into a one-page
      decoder with dialed page numbers; the keypad (.tt-panel) is JS-only and
-     sits on the build's noscript hiding list. -->
+     hides under the html:not(.js) law. -->
 <section class="channel" id="text" data-ch="CH 07" data-name="ACI TEXT" data-accent="#33ff33">
   <span class="ch-tab">CH 07 &middot; ACI Text</span>
   <h2 class="section-title">The Company Pages</h2>
-  <p class="section-kicker">Who we are and how to engage us, broadcast the 1986 way. Dial a page number on the keypad or your keyboard, or ride the colour keys.</p>
+  <p class="section-kicker">Who we are and how to engage us, broadcast the 1986 way.<span class="jsonly"> Dial a page number on the keypad or your keyboard, or ride the colour keys.</span></p>
   <div class="tt-set">
     <div class="tt-screen" id="ttScreen">
       <div class="tt-head" aria-hidden="true">
@@ -2412,8 +2433,8 @@ document.documentElement.classList.add('js');
           <p class="tt-c">NEW YORK &middot; LONDON &middot; DUBAI &middot; TOKYO
           &middot; SYDNEY &middot; CAPE TOWN &middot; AMAZONIA:
           LOCAL TIME AND FIELD CONDITIONS AT
-          ALL SEVEN STATIONS, UPDATED DAILY
-          ON THIS PAGE.</p>
+          ALL SEVEN STATIONS, PUBLISHED
+          DAILY ON THE LIVE BROADCAST.</p>
         </div>
         <p class="tt-sep" aria-hidden="true"></p>
         <p class="tt-g">FLEET POSITIONS LIVE ON CH 02</p>
@@ -2450,9 +2471,9 @@ document.documentElement.classList.add('js');
   3 L M N O P
   4 Q R S T U
   5 V W X Y Z</pre>
-        <p class="tt-c">J FILES UNDER I. THE WORD CHANGES
-        WITH THE BROADCAST DAY.</p>
-        <p class="tt-g">SPEAK THE WORD TO THE TRAFFIC DESK
+        <p class="tt-c">J FILES UNDER I. THE WORD FOLLOWS
+        THE BROADCAST DAY.</p>
+        <p class="tt-g jsonly">SPEAK THE WORD TO THE TRAFFIC DESK
         CODEWORD FIELD. WE WILL KNOW YOU
         WERE REALLY LISTENING.</p>
       </article>
@@ -2573,6 +2594,18 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
   var fxPref = store.get('aci_fx');
   if (fxPref === '0') RM = true; else if (fxPref === '1') RM = false;
   if (RM) document.documentElement.classList.add('rm');
+  /* A prerendered document computed RM before the user may have toggled
+     FX on the referring page — re-read at activation. */
+  if (document.prerendering) {
+    document.addEventListener('prerenderingchange', function () {
+      var p2 = store.get('aci_fx');
+      if (p2 === '0') RM = true;
+      else if (p2 === '1') RM = false;
+      else { try { RM = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {} }
+      document.documentElement.classList.toggle('rm', RM);
+      if (typeof applyFxUI === 'function') applyFxUI();
+    });
+  }
 
   var $ = function (s) { return document.querySelector(s); };
   var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
@@ -2621,9 +2654,12 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
   /* ---------- FX toggle (on-page pause for all motion, WCAG 2.2.2) ---------- */
   var fxBtn = $('#fxBtn');
   function applyFxUI() {
-    if (!fxBtn) return;
-    fxBtn.textContent = RM ? 'FX [Off]' : 'FX [On]';
-    fxBtn.setAttribute('aria-pressed', RM ? 'false' : 'true');
+    if (fxBtn) {
+      fxBtn.textContent = RM ? 'FX [Off]' : 'FX [On]';
+      fxBtn.setAttribute('aria-pressed', RM ? 'false' : 'true');
+    }
+    var rf = $('#rcFx');
+    if (rf) rf.setAttribute('aria-pressed', RM ? 'false' : 'true');
   }
   /* Named so the remote's FX key can share the exact same path */
   function toggleFx() {
@@ -3182,7 +3218,7 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
     radioStep = 0;
     setTrack(trackIdx);
     radioNextT = audioCtx.currentTime + 0.06;
-    musicBus.gain.setTargetAtTime(0.5, audioCtx.currentTime, 0.12);
+    musicBus.gain.setTargetAtTime(intercepting ? 0.07 : 0.5, audioCtx.currentTime, 0.12);
     radioTimer = setInterval(schedule, 25);
     npUpdate();
     trackTimer = setInterval(function () {
@@ -3201,6 +3237,7 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
     clearInterval(radioTimer); radioTimer = null;
     clearInterval(trackTimer); trackTimer = null;
     itcDisarm();
+    itcAbort();
     if (musicBus) musicBus.gain.setTargetAtTime(0.0001, audioCtx.currentTime, 0.1);
     /* Kill the hiss floor too, then suspend so "off" really stops rendering
        (battery, OS audio session) once the fades have finished. */
@@ -3220,6 +3257,8 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
       audioBtn.setAttribute('aria-label', on ? 'Stop radio: ACI Skywave 99.9 FM' : 'Play radio: ACI Skywave 99.9 FM');
     }
     if (npTicker) npTicker.hidden = !on;
+    var rm2 = $('#rcFm');
+    if (rm2) rm2.setAttribute('aria-pressed', on ? 'true' : 'false');
   }
   /* Only report "on" once the AudioContext is genuinely running. resume()
      silently stays suspended unless it is called with a real user activation
@@ -3317,7 +3356,7 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
 
   document.addEventListener('visibilitychange', function () {
     if (!audioCtx) return;
-    if (document.hidden) audioCtx.suspend();
+    if (document.hidden) { itcAbort(); audioCtx.suspend(); }
     else if (AE.on) {
       audioCtx.resume();
       radioNextT = Math.max(radioNextT, audioCtx.currentTime + 0.05);
@@ -3362,9 +3401,9 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
     });
   };
   /* Answering-machine beep for Press Rec (two rising tones, then the "tone") */
-  AE.recTone = function () {
+  AE.recTone = function (delay) {
     if (!audioCtx || !AE.on) return;
-    var t = audioCtx.currentTime;
+    var t = audioCtx.currentTime + (delay || 0);
     [[t, 0.09, 'D5'], [t + 0.14, 0.09, 'F#5'], [t + 0.34, 0.5, 'A5']].forEach(function (n) {
       var o = audioCtx.createOscillator(); o.type = 'sine'; o.frequency.value = freq(n[2]);
       var g = audioCtx.createGain();
@@ -3496,7 +3535,7 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
       recWrap.classList.add('hot');
       setTimeout(function () { recWrap.classList.remove('hot'); }, 8000);
     }
-    if (AE.recTone) AE.recTone();
+    if (AE.recTone) AE.recTone(0.5); /* after the desk's DTMF dial-out */
   });
   var copyBtn = $('#copyEmail');
   if (copyBtn) copyBtn.addEventListener('click', function () {
@@ -3837,7 +3876,8 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
     ];
     var FIXED = [
       'REFUEL COMPLETE, DUBAI', 'SURVEY GRID UPDATED, AMAZONIA', 'TIDE WINDOW OPEN, SYDNEY',
-      'UPLINK STABLE, ORBITAL RELAY', 'SAT PASS COMPLETE, SECTOR 7', 'ALL CHANNELS MONITORED'
+      'UPLINK STABLE, ORBITAL RELAY', 'SAT PASS COMPLETE, SECTOR 7', 'ALL CHANNELS MONITORED',
+      'INTERCEPT FILED, SEE TEXT P888'
     ];
     var lastHub = '';
     function utcNow() {
@@ -3880,6 +3920,7 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
       })();
     } else {
       addLog('UPLINK STABLE, ORBITAL RELAY');
+      addLog('INTERCEPT FILED, SEE TEXT P888');
     }
 
     /* "Go Anywhere", literally: click any point on the map (not a hub) and
@@ -4218,7 +4259,7 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
     intercept();
     return 'transmitting';
   };
-  function itcBeep(t, d) {
+  function itcBeep(t, d, dest) {
     /* one spoken figure = a dual-sine pair, pitched by digit */
     [700 + d * 38, 1180 + d * 52].forEach(function (f) {
       var o = audioCtx.createOscillator(); o.type = 'sine'; o.frequency.value = f;
@@ -4227,23 +4268,46 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
       g.gain.linearRampToValueAtTime(0.09, t + 0.012);
       g.gain.setValueAtTime(0.09, t + 0.1);
       g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
-      o.connect(g); g.connect(sfxBus);
+      o.connect(g); g.connect(dest || sfxBus);
       o.start(t); o.stop(t + 0.2);
     });
+  }
+  /* One kill switch per transmission: the beeps ride the suspendable
+     audio clock while the narration rides wall-clock timers, so FM-off
+     or tab-hide mid-transmission must abort BOTH or they desync. */
+  var itcTimeouts = [], itcOutRef = null, itcBedRef = null;
+  function itcAbort() {
+    if (!intercepting) return;
+    itcTimeouts.forEach(clearTimeout);
+    itcTimeouts = [];
+    try { if (itcBedRef) itcBedRef.stop(); } catch (e) {}
+    try { if (itcOutRef) itcOutRef.disconnect(); } catch (e) {}
+    itcOutRef = null; itcBedRef = null;
+    intercepting = false;
+    if (npTicker) npTicker.classList.remove('itc');
+    if (AE.on && audioCtx) {
+      musicBus.gain.setTargetAtTime(0.5, audioCtx.currentTime, 0.3);
+      npUpdate();
+    }
   }
   function intercept() {
     if (intercepting || !audioCtx) return;
     intercepting = true;
+    itcTimeouts = [];
+    var later = function (fn, ms) { itcTimeouts.push(setTimeout(fn, ms)); };
     var t0 = audioCtx.currentTime + 0.1;
     var groups = itcGroups(codewordFor(0));
     musicBus.gain.setTargetAtTime(0.07, t0, 0.6);
+    /* every transmission node routes through one abortable bus */
+    var itcOut = itcOutRef = audioCtx.createGain();
+    itcOut.connect(sfxBus);
     /* carrier static bed */
-    var bed = audioCtx.createBufferSource(); bed.buffer = noiseBuf; bed.loop = true;
+    var bed = itcBedRef = audioCtx.createBufferSource(); bed.buffer = noiseBuf; bed.loop = true;
     var bp = audioCtx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1900; bp.Q.value = 0.5;
     var bg = audioCtx.createGain();
     bg.gain.setValueAtTime(0.0001, t0);
     bg.gain.linearRampToValueAtTime(0.045, t0 + 1.4);
-    bed.connect(bp); bp.connect(bg); bg.connect(sfxBus);
+    bed.connect(bp); bp.connect(bg); bg.connect(itcOut);
     /* interval signal: a lonely minor motif, twice */
     [0, 1.4].forEach(function (off) {
       ['E5', 'G5', 'E5', 'C5'].forEach(function (n, i) {
@@ -4253,7 +4317,7 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
         g.gain.setValueAtTime(0.0001, t);
         g.gain.linearRampToValueAtTime(0.07, t + 0.02);
         g.gain.exponentialRampToValueAtTime(0.001, t + 0.26);
-        o.connect(g); g.connect(sfxBus);
+        o.connect(g); g.connect(itcOut);
         o.start(t); o.stop(t + 0.3);
       });
     });
@@ -4261,8 +4325,8 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
     var t = t0 + 4.6;
     var tickerSteps = [];
     groups.forEach(function (grp) {
-      itcBeep(t, +grp[0]); t += 0.34;
-      itcBeep(t, +grp[1]); t += 0.34;
+      itcBeep(t, +grp[0], itcOut); t += 0.34;
+      itcBeep(t, +grp[1], itcOut); t += 0.34;
       tickerSteps.push({ at: t - t0, txt: grp });
       t += 0.5;
     });
@@ -4275,16 +4339,17 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
     if (npTicker) npTicker.classList.add('itc');
     var setTick = function (txt) { if (npText) npText.textContent = txt; };
     setTick('… SIGNAL DRIFT — STAND BY …');
-    setTimeout(function () { setTick('SKYWAVE INTERCEPT ▸'); }, 1300);
+    later(function () { setTick('INTERCEPT ▸'); }, 1300);
     var shown = [];
     tickerSteps.forEach(function (s) {
-      setTimeout(function () {
+      later(function () {
         shown.push(s.txt);
-        setTick('SKYWAVE INTERCEPT ▸ ' + shown.join(' · '));
+        setTick('INTERCEPT ▸ ' + shown.join(' · '));
       }, Math.round(s.at * 1000));
     });
-    setTimeout(function () { setTick('… MSG ENDS · TEXT P888 …'); }, Math.round((tEnd - t0) * 1000));
-    setTimeout(function () {
+    later(function () { setTick('… MSG ENDS · TEXT P888 …'); }, Math.round((tEnd - t0) * 1000));
+    later(function () {
+      itcOutRef = null; itcBedRef = null; itcTimeouts = [];
       intercepting = false;
       if (npTicker) npTicker.classList.remove('itc');
       if (AE.on) {
@@ -4371,10 +4436,17 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
       }
       pno.classList.remove('err');
       if (num === cur) { pno.textContent = 'P' + cur; return; }
+      /* If focus lived in the outgoing page (index links), carry it to
+         the revealed page instead of dropping it to <body>. */
+      var hadFocus = byNum[cur].contains(document.activeElement);
       byNum[cur].hidden = true;
       byNum[cur].classList.remove('flip');
       cur = num;
       p.hidden = false;
+      if (hadFocus) {
+        p.tabIndex = -1;
+        try { p.focus({ preventScroll: true }); } catch (e) { try { p.focus(); } catch (e2) {} }
+      }
       if (!RM) {
         /* restart the row paint even on quick re-visits */
         p.classList.remove('flip');
@@ -4403,6 +4475,10 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
       if (!visible || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
       var t = e.target;
       if (t && t.closest && t.closest('input, textarea, select, [contenteditable], #remote')) return;
+      /* an open remote owns the digits (matches() throws where the
+         Popover API is absent — there the remote can't be open anyway) */
+      var rc = $('#remote');
+      try { if (rc && rc.matches(':popover-open')) return; } catch (err) {}
       if (e.key >= '0' && e.key <= '9') key(e.key);
     });
     /* index links flip pages instead of jumping down the stack */
@@ -4524,11 +4600,18 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
       var k = used / MAX;
       if (tapeL) tapeL.setAttribute('r', (15 - 7 * k).toFixed(1));
       if (tapeR) tapeR.setAttribute('r', (8 + 7 * k).toFixed(1));
+      /* the visual TAPE REM counter is aria-hidden; announce the wall once */
+      if (used >= MAX && !tapeOut) {
+        tapeOut = true;
+        if (statusEl) statusEl.textContent = 'End of tape — 1400 characters. Recording stops here.';
+      } else if (used < MAX - 40 && tapeOut) {
+        tapeOut = false;
+      }
       try { store.set('aci_desk', JSON.stringify({ m: (msg && msg.value) || '', f: (from && from.value) || '' })); } catch (e) {}
     }
 
     /* reels spin and the VU needle kicks with your keystroke cadence */
-    var vel = 0, needleV = 0, spinOn = false, rot = 0;
+    var vel = 0, needleV = 0, spinOn = false, rot = 0, tapeOut = false;
     function kick() {
       if (RM) return;
       vel = 3.4;
@@ -4552,6 +4635,7 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
       statusEl.classList.toggle('hot', a === 2);
       if (a === 2) statusEl.textContent = 'Codeword accepted. You were really listening.';
       else if (a === 1) statusEl.textContent = 'Codeword logged.';
+      else statusEl.textContent = 'Blank tape. Route your traffic and record.';
     });
 
     /* the existing btnRec handler plays the tone + heats the REC dot;
@@ -4626,6 +4710,7 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
     if (!remote || !rBtn) return;
     if (!('popover' in HTMLElement.prototype)) {
       rBtn.style.display = 'none';
+      remote.hidden = true; /* belt over the CSS display:none braces */
       return;
     }
     var ir = remote.querySelector('.rc-ir');
@@ -4652,10 +4737,14 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
     if (rcFx) rcFx.addEventListener('click', toggleFx);
     var rcFm = $('#rcFm');
     if (rcFm) rcFm.addEventListener('click', function () {
+      /* same primer-grace guard as the canonical chip: if the primer just
+         committed the radio on during this gesture, don't toggle it off */
+      if (AE.on && autoOnAt >= 0 && performance.now() - autoOnAt < 400) { audioWanted = true; return; }
       audioWanted = !AE.on;
       setAudio(audioWanted);
     });
     var rcShare = $('#rcShare');
+    var rcStatus = $('#rcStatus');
     if (rcShare) rcShare.addEventListener('click', function () {
       var ch = hudCh ? hudCh.textContent : 'CH 01';
       var sec = null;
@@ -4663,27 +4752,38 @@ var WORLD_COUNTRIES = [{"n":"Fiji","d":"M994.8 298.6L995.5 298.2L996.4 299L996 3
       var url = location.origin + location.pathname
         + (sec && sec.id !== 'top' ? '#' + sec.id : '');
       var lbl = rcShare.querySelector('i');
-      var done = function () {
+      /* honest labels: 'Sent' only when the share sheet resolved; the
+         clipboard path only ever copied */
+      var done = function (txt) {
         if (lbl) {
-          lbl.textContent = 'Sent';
+          lbl.textContent = txt;
           setTimeout(function () { lbl.textContent = 'Share'; }, 1600);
         }
+        if (rcStatus) rcStatus.textContent = txt === 'Sent'
+          ? 'Channel shared.' : 'Channel link copied to clipboard.';
       };
       try {
         if (navigator.share) {
-          navigator.share({ title: document.title, url: url }).then(done).catch(function () {});
+          navigator.share({ title: document.title, url: url })
+            .then(function () { done('Sent'); }).catch(function () {});
         } else if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(url).then(done).catch(function () {});
+          navigator.clipboard.writeText(url)
+            .then(function () { done('Copied'); }).catch(function () {});
         }
       } catch (e) {}
     });
-    /* digit punching while the remote is open */
-    remote.addEventListener('keydown', function (e) {
+    /* Digit punching while the remote is open. Document-level capture:
+       the normal open path leaves focus on the HUD chip (popovers don't
+       autofocus), so keydowns never bubble through #remote — and the
+       teletext dialer registered earlier would otherwise eat the digit. */
+    document.addEventListener('keydown', function (e) {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      try { if (!remote.matches(':popover-open')) return; } catch (err) { return; }
       if (e.key >= '1' && e.key <= '7') {
         var a = remote.querySelectorAll('.rc-chans a')[parseInt(e.key, 10) - 1];
         if (a) { e.preventDefault(); a.click(); }
       }
-    });
+    }, true);
   })();
 })();
 </script>

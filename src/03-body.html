@@ -74,8 +74,8 @@ document.documentElement.classList.add('js');
 <!-- THE REMOTE — top-layer VCR remote (Popover API). The declarative
      popovertarget pair works without JS; channel keys are real anchors that
      ride the existing data-ch nav delegation. JS-only keys carry .rc-js and
-     sit on the build's noscript hiding list. -->
-<div id="remote" popover aria-label="ACI remote control">
+     hide under the html:not(.js) law. -->
+<div id="remote" popover role="group" aria-label="ACI remote control">
   <div class="rc-brand" aria-hidden="true"><span>ACI</span> RC-86 <span class="rc-ir"></span></div>
   <div class="rc-chans">
     <a class="rc-key" href="#top" data-ch="CH 01" data-name="SIGNAL"><b>1</b><i>Signal</i></a>
@@ -89,8 +89,8 @@ document.documentElement.classList.add('js');
   <div class="rc-row">
     <button type="button" class="rc-key rc-js" id="rcRew" aria-label="Rewind to top"><b>&#9664;&#9664;</b><i>Rew</i></button>
     <a class="rc-key" href="drive/" aria-label="Eject: flip to Side B"><b>&#9167;</b><i>Side B</i></a>
-    <button type="button" class="rc-key rc-js" id="rcFx" aria-label="Toggle visual effects"><b>FX</b><i>Effects</i></button>
-    <button type="button" class="rc-key rc-js" id="rcFm" aria-label="Toggle radio"><b>FM</b><i>99.9</i></button>
+    <button type="button" class="rc-key rc-js" id="rcFx" aria-pressed="true" aria-label="Toggle visual effects"><b>FX</b><i>Effects</i></button>
+    <button type="button" class="rc-key rc-js" id="rcFm" aria-pressed="false" aria-label="Toggle radio"><b>FM</b><i>99.9</i></button>
     <button type="button" class="rc-key rc-js" id="rcShare" aria-label="Share current channel"><b>&#8599;</b><i>Share</i></button>
   </div>
   <div class="rc-codes">
@@ -100,6 +100,7 @@ document.documentElement.classList.add('js');
     <span>TEXT P888 &mdash; and then listen</span>
   </div>
 </div>
+<span id="rcStatus" class="vh" role="status" aria-live="polite"></span>
 
 <!-- NAV -->
 <nav class="tapenav" aria-label="Sections">
@@ -360,7 +361,7 @@ document.documentElement.classList.add('js');
           <a class="email" href="mailto:contactandrewcalebintl@gmail.com">contactandrewcalebintl@gmail.com</a><button class="copy-email" id="copyEmail" type="button" aria-label="Copy email address">[Copy]</button>
         </div>
         <!-- The Traffic Desk: JS-only enhancement over the always-working
-             mailto above (hidden by the build's noscript list). It composes
+             mailto above (hidden no-JS by the html:not(.js) law). It composes
              the mailto live; it never claims to "send" anything itself. -->
         <form class="desk" id="deskForm">
           <fieldset class="desk-class">
@@ -379,7 +380,8 @@ document.documentElement.classList.add('js');
             </label>
           </div>
           <label class="desk-field desk-msgfield">Message
-            <textarea id="deskMsg" maxlength="1400" rows="5" placeholder="Where do you want to go? Who do you need to meet?"></textarea>
+            <span id="deskMsgHint" class="vh">The tape holds 1400 characters; recording stops at the end of the tape.</span>
+            <textarea id="deskMsg" maxlength="1400" rows="5" aria-describedby="deskMsgHint" placeholder="Where do you want to go? Who do you need to meet?"></textarea>
           </label>
           <div class="desk-deck" aria-hidden="true">
             <svg class="desk-reels" viewBox="0 0 150 44" xmlns="http://www.w3.org/2000/svg">
@@ -426,11 +428,11 @@ document.documentElement.classList.add('js');
 <!-- Pages are real stacked articles: with no JS this section reads top to
      bottom as a plain document. The JS module collapses it into a one-page
      decoder with dialed page numbers; the keypad (.tt-panel) is JS-only and
-     sits on the build's noscript hiding list. -->
+     hides under the html:not(.js) law. -->
 <section class="channel" id="text" data-ch="CH 07" data-name="ACI TEXT" data-accent="#33ff33">
   <span class="ch-tab">CH 07 &middot; ACI Text</span>
   <h2 class="section-title">The Company Pages</h2>
-  <p class="section-kicker">Who we are and how to engage us, broadcast the 1986 way. Dial a page number on the keypad or your keyboard, or ride the colour keys.</p>
+  <p class="section-kicker">Who we are and how to engage us, broadcast the 1986 way.<span class="jsonly"> Dial a page number on the keypad or your keyboard, or ride the colour keys.</span></p>
   <div class="tt-set">
     <div class="tt-screen" id="ttScreen">
       <div class="tt-head" aria-hidden="true">
@@ -532,8 +534,8 @@ document.documentElement.classList.add('js');
           <p class="tt-c">NEW YORK &middot; LONDON &middot; DUBAI &middot; TOKYO
           &middot; SYDNEY &middot; CAPE TOWN &middot; AMAZONIA:
           LOCAL TIME AND FIELD CONDITIONS AT
-          ALL SEVEN STATIONS, UPDATED DAILY
-          ON THIS PAGE.</p>
+          ALL SEVEN STATIONS, PUBLISHED
+          DAILY ON THE LIVE BROADCAST.</p>
         </div>
         <p class="tt-sep" aria-hidden="true"></p>
         <p class="tt-g">FLEET POSITIONS LIVE ON CH 02</p>
@@ -570,9 +572,9 @@ document.documentElement.classList.add('js');
   3 L M N O P
   4 Q R S T U
   5 V W X Y Z</pre>
-        <p class="tt-c">J FILES UNDER I. THE WORD CHANGES
-        WITH THE BROADCAST DAY.</p>
-        <p class="tt-g">SPEAK THE WORD TO THE TRAFFIC DESK
+        <p class="tt-c">J FILES UNDER I. THE WORD FOLLOWS
+        THE BROADCAST DAY.</p>
+        <p class="tt-g jsonly">SPEAK THE WORD TO THE TRAFFIC DESK
         CODEWORD FIELD. WE WILL KNOW YOU
         WERE REALLY LISTENING.</p>
       </article>

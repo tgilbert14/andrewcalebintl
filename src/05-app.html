@@ -18,6 +18,18 @@
   var fxPref = store.get('aci_fx');
   if (fxPref === '0') RM = true; else if (fxPref === '1') RM = false;
   if (RM) document.documentElement.classList.add('rm');
+  /* A prerendered document computed RM before the user may have toggled
+     FX on the referring page — re-read at activation. */
+  if (document.prerendering) {
+    document.addEventListener('prerenderingchange', function () {
+      var p2 = store.get('aci_fx');
+      if (p2 === '0') RM = true;
+      else if (p2 === '1') RM = false;
+      else { try { RM = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {} }
+      document.documentElement.classList.toggle('rm', RM);
+      if (typeof applyFxUI === 'function') applyFxUI();
+    });
+  }
 
   var $ = function (s) { return document.querySelector(s); };
   var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
@@ -66,9 +78,12 @@
   /* ---------- FX toggle (on-page pause for all motion, WCAG 2.2.2) ---------- */
   var fxBtn = $('#fxBtn');
   function applyFxUI() {
-    if (!fxBtn) return;
-    fxBtn.textContent = RM ? 'FX [Off]' : 'FX [On]';
-    fxBtn.setAttribute('aria-pressed', RM ? 'false' : 'true');
+    if (fxBtn) {
+      fxBtn.textContent = RM ? 'FX [Off]' : 'FX [On]';
+      fxBtn.setAttribute('aria-pressed', RM ? 'false' : 'true');
+    }
+    var rf = $('#rcFx');
+    if (rf) rf.setAttribute('aria-pressed', RM ? 'false' : 'true');
   }
   /* Named so the remote's FX key can share the exact same path */
   function toggleFx() {
@@ -627,7 +642,7 @@
     radioStep = 0;
     setTrack(trackIdx);
     radioNextT = audioCtx.currentTime + 0.06;
-    musicBus.gain.setTargetAtTime(0.5, audioCtx.currentTime, 0.12);
+    musicBus.gain.setTargetAtTime(intercepting ? 0.07 : 0.5, audioCtx.currentTime, 0.12);
     radioTimer = setInterval(schedule, 25);
     npUpdate();
     trackTimer = setInterval(function () {
@@ -646,6 +661,7 @@
     clearInterval(radioTimer); radioTimer = null;
     clearInterval(trackTimer); trackTimer = null;
     itcDisarm();
+    itcAbort();
     if (musicBus) musicBus.gain.setTargetAtTime(0.0001, audioCtx.currentTime, 0.1);
     /* Kill the hiss floor too, then suspend so "off" really stops rendering
        (battery, OS audio session) once the fades have finished. */
@@ -665,6 +681,8 @@
       audioBtn.setAttribute('aria-label', on ? 'Stop radio: ACI Skywave 99.9 FM' : 'Play radio: ACI Skywave 99.9 FM');
     }
     if (npTicker) npTicker.hidden = !on;
+    var rm2 = $('#rcFm');
+    if (rm2) rm2.setAttribute('aria-pressed', on ? 'true' : 'false');
   }
   /* Only report "on" once the AudioContext is genuinely running. resume()
      silently stays suspended unless it is called with a real user activation
@@ -762,7 +780,7 @@
 
   document.addEventListener('visibilitychange', function () {
     if (!audioCtx) return;
-    if (document.hidden) audioCtx.suspend();
+    if (document.hidden) { itcAbort(); audioCtx.suspend(); }
     else if (AE.on) {
       audioCtx.resume();
       radioNextT = Math.max(radioNextT, audioCtx.currentTime + 0.05);
@@ -807,9 +825,9 @@
     });
   };
   /* Answering-machine beep for Press Rec (two rising tones, then the "tone") */
-  AE.recTone = function () {
+  AE.recTone = function (delay) {
     if (!audioCtx || !AE.on) return;
-    var t = audioCtx.currentTime;
+    var t = audioCtx.currentTime + (delay || 0);
     [[t, 0.09, 'D5'], [t + 0.14, 0.09, 'F#5'], [t + 0.34, 0.5, 'A5']].forEach(function (n) {
       var o = audioCtx.createOscillator(); o.type = 'sine'; o.frequency.value = freq(n[2]);
       var g = audioCtx.createGain();
@@ -941,7 +959,7 @@
       recWrap.classList.add('hot');
       setTimeout(function () { recWrap.classList.remove('hot'); }, 8000);
     }
-    if (AE.recTone) AE.recTone();
+    if (AE.recTone) AE.recTone(0.5); /* after the desk's DTMF dial-out */
   });
   var copyBtn = $('#copyEmail');
   if (copyBtn) copyBtn.addEventListener('click', function () {
@@ -1282,7 +1300,8 @@
     ];
     var FIXED = [
       'REFUEL COMPLETE, DUBAI', 'SURVEY GRID UPDATED, AMAZONIA', 'TIDE WINDOW OPEN, SYDNEY',
-      'UPLINK STABLE, ORBITAL RELAY', 'SAT PASS COMPLETE, SECTOR 7', 'ALL CHANNELS MONITORED'
+      'UPLINK STABLE, ORBITAL RELAY', 'SAT PASS COMPLETE, SECTOR 7', 'ALL CHANNELS MONITORED',
+      'INTERCEPT FILED, SEE TEXT P888'
     ];
     var lastHub = '';
     function utcNow() {
@@ -1325,6 +1344,7 @@
       })();
     } else {
       addLog('UPLINK STABLE, ORBITAL RELAY');
+      addLog('INTERCEPT FILED, SEE TEXT P888');
     }
 
     /* "Go Anywhere", literally: click any point on the map (not a hub) and
@@ -1663,7 +1683,7 @@
     intercept();
     return 'transmitting';
   };
-  function itcBeep(t, d) {
+  function itcBeep(t, d, dest) {
     /* one spoken figure = a dual-sine pair, pitched by digit */
     [700 + d * 38, 1180 + d * 52].forEach(function (f) {
       var o = audioCtx.createOscillator(); o.type = 'sine'; o.frequency.value = f;
@@ -1672,23 +1692,46 @@
       g.gain.linearRampToValueAtTime(0.09, t + 0.012);
       g.gain.setValueAtTime(0.09, t + 0.1);
       g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
-      o.connect(g); g.connect(sfxBus);
+      o.connect(g); g.connect(dest || sfxBus);
       o.start(t); o.stop(t + 0.2);
     });
+  }
+  /* One kill switch per transmission: the beeps ride the suspendable
+     audio clock while the narration rides wall-clock timers, so FM-off
+     or tab-hide mid-transmission must abort BOTH or they desync. */
+  var itcTimeouts = [], itcOutRef = null, itcBedRef = null;
+  function itcAbort() {
+    if (!intercepting) return;
+    itcTimeouts.forEach(clearTimeout);
+    itcTimeouts = [];
+    try { if (itcBedRef) itcBedRef.stop(); } catch (e) {}
+    try { if (itcOutRef) itcOutRef.disconnect(); } catch (e) {}
+    itcOutRef = null; itcBedRef = null;
+    intercepting = false;
+    if (npTicker) npTicker.classList.remove('itc');
+    if (AE.on && audioCtx) {
+      musicBus.gain.setTargetAtTime(0.5, audioCtx.currentTime, 0.3);
+      npUpdate();
+    }
   }
   function intercept() {
     if (intercepting || !audioCtx) return;
     intercepting = true;
+    itcTimeouts = [];
+    var later = function (fn, ms) { itcTimeouts.push(setTimeout(fn, ms)); };
     var t0 = audioCtx.currentTime + 0.1;
     var groups = itcGroups(codewordFor(0));
     musicBus.gain.setTargetAtTime(0.07, t0, 0.6);
+    /* every transmission node routes through one abortable bus */
+    var itcOut = itcOutRef = audioCtx.createGain();
+    itcOut.connect(sfxBus);
     /* carrier static bed */
-    var bed = audioCtx.createBufferSource(); bed.buffer = noiseBuf; bed.loop = true;
+    var bed = itcBedRef = audioCtx.createBufferSource(); bed.buffer = noiseBuf; bed.loop = true;
     var bp = audioCtx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1900; bp.Q.value = 0.5;
     var bg = audioCtx.createGain();
     bg.gain.setValueAtTime(0.0001, t0);
     bg.gain.linearRampToValueAtTime(0.045, t0 + 1.4);
-    bed.connect(bp); bp.connect(bg); bg.connect(sfxBus);
+    bed.connect(bp); bp.connect(bg); bg.connect(itcOut);
     /* interval signal: a lonely minor motif, twice */
     [0, 1.4].forEach(function (off) {
       ['E5', 'G5', 'E5', 'C5'].forEach(function (n, i) {
@@ -1698,7 +1741,7 @@
         g.gain.setValueAtTime(0.0001, t);
         g.gain.linearRampToValueAtTime(0.07, t + 0.02);
         g.gain.exponentialRampToValueAtTime(0.001, t + 0.26);
-        o.connect(g); g.connect(sfxBus);
+        o.connect(g); g.connect(itcOut);
         o.start(t); o.stop(t + 0.3);
       });
     });
@@ -1706,8 +1749,8 @@
     var t = t0 + 4.6;
     var tickerSteps = [];
     groups.forEach(function (grp) {
-      itcBeep(t, +grp[0]); t += 0.34;
-      itcBeep(t, +grp[1]); t += 0.34;
+      itcBeep(t, +grp[0], itcOut); t += 0.34;
+      itcBeep(t, +grp[1], itcOut); t += 0.34;
       tickerSteps.push({ at: t - t0, txt: grp });
       t += 0.5;
     });
@@ -1720,16 +1763,17 @@
     if (npTicker) npTicker.classList.add('itc');
     var setTick = function (txt) { if (npText) npText.textContent = txt; };
     setTick('… SIGNAL DRIFT — STAND BY …');
-    setTimeout(function () { setTick('SKYWAVE INTERCEPT ▸'); }, 1300);
+    later(function () { setTick('INTERCEPT ▸'); }, 1300);
     var shown = [];
     tickerSteps.forEach(function (s) {
-      setTimeout(function () {
+      later(function () {
         shown.push(s.txt);
-        setTick('SKYWAVE INTERCEPT ▸ ' + shown.join(' · '));
+        setTick('INTERCEPT ▸ ' + shown.join(' · '));
       }, Math.round(s.at * 1000));
     });
-    setTimeout(function () { setTick('… MSG ENDS · TEXT P888 …'); }, Math.round((tEnd - t0) * 1000));
-    setTimeout(function () {
+    later(function () { setTick('… MSG ENDS · TEXT P888 …'); }, Math.round((tEnd - t0) * 1000));
+    later(function () {
+      itcOutRef = null; itcBedRef = null; itcTimeouts = [];
       intercepting = false;
       if (npTicker) npTicker.classList.remove('itc');
       if (AE.on) {
@@ -1816,10 +1860,17 @@
       }
       pno.classList.remove('err');
       if (num === cur) { pno.textContent = 'P' + cur; return; }
+      /* If focus lived in the outgoing page (index links), carry it to
+         the revealed page instead of dropping it to <body>. */
+      var hadFocus = byNum[cur].contains(document.activeElement);
       byNum[cur].hidden = true;
       byNum[cur].classList.remove('flip');
       cur = num;
       p.hidden = false;
+      if (hadFocus) {
+        p.tabIndex = -1;
+        try { p.focus({ preventScroll: true }); } catch (e) { try { p.focus(); } catch (e2) {} }
+      }
       if (!RM) {
         /* restart the row paint even on quick re-visits */
         p.classList.remove('flip');
@@ -1848,6 +1899,10 @@
       if (!visible || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
       var t = e.target;
       if (t && t.closest && t.closest('input, textarea, select, [contenteditable], #remote')) return;
+      /* an open remote owns the digits (matches() throws where the
+         Popover API is absent — there the remote can't be open anyway) */
+      var rc = $('#remote');
+      try { if (rc && rc.matches(':popover-open')) return; } catch (err) {}
       if (e.key >= '0' && e.key <= '9') key(e.key);
     });
     /* index links flip pages instead of jumping down the stack */
@@ -1969,11 +2024,18 @@
       var k = used / MAX;
       if (tapeL) tapeL.setAttribute('r', (15 - 7 * k).toFixed(1));
       if (tapeR) tapeR.setAttribute('r', (8 + 7 * k).toFixed(1));
+      /* the visual TAPE REM counter is aria-hidden; announce the wall once */
+      if (used >= MAX && !tapeOut) {
+        tapeOut = true;
+        if (statusEl) statusEl.textContent = 'End of tape — 1400 characters. Recording stops here.';
+      } else if (used < MAX - 40 && tapeOut) {
+        tapeOut = false;
+      }
       try { store.set('aci_desk', JSON.stringify({ m: (msg && msg.value) || '', f: (from && from.value) || '' })); } catch (e) {}
     }
 
     /* reels spin and the VU needle kicks with your keystroke cadence */
-    var vel = 0, needleV = 0, spinOn = false, rot = 0;
+    var vel = 0, needleV = 0, spinOn = false, rot = 0, tapeOut = false;
     function kick() {
       if (RM) return;
       vel = 3.4;
@@ -1997,6 +2059,7 @@
       statusEl.classList.toggle('hot', a === 2);
       if (a === 2) statusEl.textContent = 'Codeword accepted. You were really listening.';
       else if (a === 1) statusEl.textContent = 'Codeword logged.';
+      else statusEl.textContent = 'Blank tape. Route your traffic and record.';
     });
 
     /* the existing btnRec handler plays the tone + heats the REC dot;
@@ -2071,6 +2134,7 @@
     if (!remote || !rBtn) return;
     if (!('popover' in HTMLElement.prototype)) {
       rBtn.style.display = 'none';
+      remote.hidden = true; /* belt over the CSS display:none braces */
       return;
     }
     var ir = remote.querySelector('.rc-ir');
@@ -2097,10 +2161,14 @@
     if (rcFx) rcFx.addEventListener('click', toggleFx);
     var rcFm = $('#rcFm');
     if (rcFm) rcFm.addEventListener('click', function () {
+      /* same primer-grace guard as the canonical chip: if the primer just
+         committed the radio on during this gesture, don't toggle it off */
+      if (AE.on && autoOnAt >= 0 && performance.now() - autoOnAt < 400) { audioWanted = true; return; }
       audioWanted = !AE.on;
       setAudio(audioWanted);
     });
     var rcShare = $('#rcShare');
+    var rcStatus = $('#rcStatus');
     if (rcShare) rcShare.addEventListener('click', function () {
       var ch = hudCh ? hudCh.textContent : 'CH 01';
       var sec = null;
@@ -2108,27 +2176,38 @@
       var url = location.origin + location.pathname
         + (sec && sec.id !== 'top' ? '#' + sec.id : '');
       var lbl = rcShare.querySelector('i');
-      var done = function () {
+      /* honest labels: 'Sent' only when the share sheet resolved; the
+         clipboard path only ever copied */
+      var done = function (txt) {
         if (lbl) {
-          lbl.textContent = 'Sent';
+          lbl.textContent = txt;
           setTimeout(function () { lbl.textContent = 'Share'; }, 1600);
         }
+        if (rcStatus) rcStatus.textContent = txt === 'Sent'
+          ? 'Channel shared.' : 'Channel link copied to clipboard.';
       };
       try {
         if (navigator.share) {
-          navigator.share({ title: document.title, url: url }).then(done).catch(function () {});
+          navigator.share({ title: document.title, url: url })
+            .then(function () { done('Sent'); }).catch(function () {});
         } else if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(url).then(done).catch(function () {});
+          navigator.clipboard.writeText(url)
+            .then(function () { done('Copied'); }).catch(function () {});
         }
       } catch (e) {}
     });
-    /* digit punching while the remote is open */
-    remote.addEventListener('keydown', function (e) {
+    /* Digit punching while the remote is open. Document-level capture:
+       the normal open path leaves focus on the HUD chip (popovers don't
+       autofocus), so keydowns never bubble through #remote — and the
+       teletext dialer registered earlier would otherwise eat the digit. */
+    document.addEventListener('keydown', function (e) {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      try { if (!remote.matches(':popover-open')) return; } catch (err) { return; }
       if (e.key >= '1' && e.key <= '7') {
         var a = remote.querySelectorAll('.rc-chans a')[parseInt(e.key, 10) - 1];
         if (a) { e.preventDefault(); a.click(); }
       }
-    });
+    }, true);
   })();
 })();
 </script>

@@ -356,8 +356,9 @@ html.rm .hud .audio-btn.pulse { animation: none; }
 .hud .np .np-inner { display: inline-block; padding-left: 100%; animation: npmarq 12s linear infinite; }
 .hud .np[hidden] { display: none; }
 /* During a Skywave intercept the numbers own the ticker: no marquee,
-   signal-cyan, wide enough for five groups */
-.hud .np.itc { color: var(--signal-cyan); max-width: 34ch; }
+   signal-cyan, and wide enough for the FULL five-group line including
+   the "INTERCEPT ▸" prefix (~34 glyphs + .06em tracking) */
+.hud .np.itc { color: var(--signal-cyan); max-width: 40ch; }
 .hud .np.itc .np-inner { animation: none; padding-left: 0; }
 @keyframes npmarq { to { transform: translateX(-100%); } }
 html.rm .hud .np .np-inner { animation: none; padding-left: 0; }
