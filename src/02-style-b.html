@@ -1048,6 +1048,87 @@ html.rm .tt-set.live .tt-page.flip > * { animation: none; }
 .rc-codes-t { color: var(--osd-amber); letter-spacing: .25em; }
 
 /* ============================================================
+   SCROLL FILM — the broadcast day arc
+   Scroll is the evening: the hero sun sets behind the grid as you
+   leave CH 01, the world deepens from violet dusk toward midnight,
+   stars come out over the fixed glow, and every channel's content
+   rises into frame as it enters the viewport. All of it is CSS
+   scroll/view timelines — zero JS, zero rAF cost — fenced so
+   unsupporting browsers simply keep today's page. Scroll is never
+   hijacked; these read position, they don't steer it.
+   ============================================================ */
+.fx-nightfall, .fx-nightstars { display: none; }
+@supports (animation-timeline: scroll()) {
+  .fx-nightfall {
+    display: block; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background: linear-gradient(180deg, rgba(2,0,10,.95), rgba(4,0,16,.82) 55%, rgba(9,2,26,.6));
+    opacity: 0;
+    animation: nightfall 1s linear both;
+    animation-timeline: scroll(root);
+  }
+  @keyframes nightfall { 0% { opacity: 0; } 50% { opacity: .34; } 100% { opacity: .6; } }
+  .fx-nightstars {
+    display: block; position: fixed; inset: 0 0 26% 0; z-index: -1; pointer-events: none;
+    background-image:
+      radial-gradient(1px 1px at 31px 44px, rgba(255,255,255,.95), transparent 1px),
+      radial-gradient(1px 1px at 118px 152px, rgba(255,255,255,.8), transparent 1px),
+      radial-gradient(1.5px 1.5px at 210px 80px, rgba(0,242,255,.9), transparent 2px),
+      radial-gradient(1px 1px at 255px 200px, rgba(255,255,255,.85), transparent 1px),
+      radial-gradient(1px 1px at 160px 250px, rgba(255,0,255,.8), transparent 1px),
+      radial-gradient(1.5px 1.5px at 68px 280px, rgba(255,255,255,.75), transparent 2px);
+    background-size: 320px 320px;
+    -webkit-mask-image: linear-gradient(180deg, #000 45%, transparent);
+    mask-image: linear-gradient(180deg, #000 45%, transparent);
+    opacity: 0;
+    animation: nightstars 1s linear both;
+    animation-timeline: scroll(root);
+  }
+  @keyframes nightstars { 0% { opacity: 0; } 40% { opacity: 0; } 100% { opacity: .95; } }
+}
+@supports (animation-timeline: view()) {
+  /* The sun sets as CH 01 leaves the frame: `translate` (not transform)
+     so the pointer-parallax transform survives; it sinks behind the
+     grid floor's haze because the gridwrap paints above it. */
+  .hero-sun {
+    animation: sunset 1s linear both;
+    animation-timeline: view();
+    animation-range: exit 0% exit 92%;
+  }
+  @keyframes sunset { to { translate: 0 26vh; } }
+  /* Channel entrance choreography: each element rises as IT enters,
+     so tall sections stage themselves naturally. from{}-only keyframes:
+     animation:none (RM) is the designed final state. */
+  .channel > .ch-tab,
+  .channel > .section-title,
+  .channel > .section-kicker,
+  .channel > .fleet-script,
+  .channel > .ethos-pull,
+  .channel > .tape-micro,
+  .channel .fleet-wrap, .channel .fleet-log,
+  .channel .contact-wrap, .channel .tt-set,
+  .channel .operator-grid > *,
+  .ethos-item, .monitor {
+    animation: chrise 1s cubic-bezier(.2, .6, .25, 1) both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 42%;
+  }
+  @keyframes chrise { from { opacity: 0; translate: 0 30px; } }
+  /* Diagonal cascade across the card grids */
+  .ethos-item:nth-child(2), .monitor:nth-child(3n+2) { animation-range: entry 8% entry 50%; }
+  .ethos-item:nth-child(3), .monitor:nth-child(3n) { animation-range: entry 16% entry 58%; }
+  .ethos-item:nth-child(4) { animation-range: entry 24% entry 66%; }
+}
+html.rm .fx-nightfall, html.rm .fx-nightstars { animation: none; }
+html.rm .hero-sun { animation: none; }
+html.rm .channel > .ch-tab, html.rm .channel > .section-title,
+html.rm .channel > .section-kicker, html.rm .channel > .fleet-script,
+html.rm .channel > .ethos-pull, html.rm .channel > .tape-micro,
+html.rm .channel .fleet-wrap, html.rm .channel .fleet-log,
+html.rm .channel .contact-wrap, html.rm .channel .tt-set,
+html.rm .channel .operator-grid > *,
+html.rm .ethos-item, html.rm .monitor { animation: none; }
+
+/* ============================================================
    TAPE REMAINING — zero-JS scroll-driven reel gauge (HUD)
    Scroll position IS tape position. CSS scroll timelines only;
    hidden entirely where unsupported so the HUD reads complete.
@@ -1171,6 +1252,13 @@ html.rm .tapegauge .tg-rem::after { animation: none; }
   .tapegauge .tg-tape, .tapegauge .tg-spin, .tapegauge .tg-rem::after { animation: none; }
   #remote { transition: none; }
   .desk-class span { transition: none; }
+  .fx-nightfall, .fx-nightstars { animation: none; }
+  .hero-sun { animation: none; }
+  .channel > .ch-tab, .channel > .section-title, .channel > .section-kicker,
+  .channel > .fleet-script, .channel > .ethos-pull, .channel > .tape-micro,
+  .channel .fleet-wrap, .channel .fleet-log, .channel .contact-wrap,
+  .channel .tt-set, .channel .operator-grid > *,
+  .ethos-item, .monitor { animation: none; }
 }
 html.rm #remote { transition: none; }
 html.rm .desk-class span { transition: none; }
