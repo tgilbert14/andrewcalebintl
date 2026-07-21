@@ -1573,6 +1573,85 @@
       se.scrollBehavior = '';
     }
   })();
+
+  /* ============================================================
+     CRUISE — press Play and the deck runs the tape itself.
+     Implementation law: cruise only writes scrollTo(); scroll stays
+     the single source of truth, so the whole engine (bands, linger,
+     music arming, capture rig) is untouched. Any real input — wheel,
+     touch, scroll keys, grabbing the scrollbar — hands the wheel
+     back instantly: the no-hijack law, inverted but intact.
+     The pace: the full journey in ~85s. Each band is ~12-14s of
+     reading time and the finale linger gets ~25s — enough to read
+     every card, never enough to drag.
+     ============================================================ */
+  var CRUISE_SECS = 85;
+  var cruising = false, cruiseLastT = 0, cruiseFloat = 0;
+  var playCue = $('#playCue'), cruiseBtn = $('#cruiseBtn');
+  function cruiseUI() {
+    if (cruiseBtn) {
+      cruiseBtn.innerHTML = cruising ? '&#9632; Cruise<span class="livedot"></span>' : '&#9654; Play';
+      cruiseBtn.classList.toggle('on', cruising);
+      cruiseBtn.setAttribute('aria-pressed', cruising ? 'true' : 'false');
+      cruiseBtn.setAttribute('aria-label', cruising
+        ? 'Stop auto drive' : 'Auto drive: play the journey to the end');
+    }
+    if (playCue) playCue.setAttribute('aria-pressed', cruising ? 'true' : 'false');
+  }
+  function cruiseFrame(now) {
+    if (!cruising) return;
+    var dt = clamp((now - cruiseLastT) / 1000, 0, 0.1);
+    cruiseLastT = now;
+    var max = document.documentElement.scrollHeight - innerHeight;
+    /* someone else moved the tape (anchor, restore) — re-sync, don't fight */
+    if (Math.abs(scrollY - cruiseFloat) > 4) cruiseFloat = scrollY;
+    cruiseFloat += ((trackH - vh) / CRUISE_SECS) * dt;
+    if (cruiseFloat >= max - 1) {
+      window.scrollTo(0, max);
+      setCruise(false);
+      return;
+    }
+    window.scrollTo(0, cruiseFloat);
+    requestAnimationFrame(cruiseFrame);
+  }
+  function setCruise(on) {
+    if (on === cruising) return;
+    cruising = on;
+    cruiseUI();
+    /* html { scroll-behavior: smooth } would turn every per-frame
+       scrollTo into a self-cancelling smooth animation (net zero
+       movement) — force instant stepping while the deck drives */
+    document.documentElement.style.scrollBehavior = on ? 'auto' : '';
+    if (on) {
+      cruiseFloat = scrollY;
+      /* pressing PLAY on a tape deck plays the sound too — a real
+         activation, so the resume is legal; prior explicit off wins */
+      if (audioWanted && !AE.on) setAudio(true, true);
+      requestAnimationFrame(function (t) { cruiseLastT = t; requestAnimationFrame(cruiseFrame); });
+    }
+  }
+  if (playCue) playCue.addEventListener('click', function () { setCruise(!cruising); });
+  if (cruiseBtn) cruiseBtn.addEventListener('click', function () { setCruise(!cruising); });
+  /* taking the wheel disengages instantly */
+  addEventListener('wheel', function () { setCruise(false); }, { passive: true });
+  addEventListener('touchstart', function () { setCruise(false); }, { passive: true });
+  addEventListener('pointerdown', function (e) {
+    /* dash controls (FM/FX) and the play keys themselves don't count */
+    if (e.target && e.target.closest && e.target.closest('.dash, .btn-play')) return;
+    setCruise(false);
+  }, true);
+  var CRUISE_KEYS = { 'ArrowDown': 1, 'ArrowUp': 1, 'PageDown': 1, 'PageUp': 1, ' ': 1, 'Spacebar': 1, 'Home': 1, 'End': 1, 'Escape': 1 };
+  addEventListener('keydown', function (e) {
+    if (!cruising) return;
+    if (e.target && e.target.closest && e.target.closest('button, a, input, textarea, select')) {
+      if (e.key !== 'Escape') return;
+    }
+    if (CRUISE_KEYS[e.key]) setCruise(false);
+  }, true);
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) setCruise(false);
+  });
+
   read();
   curT = targetT;
   requestAnimationFrame(function (t0) { lastNow = t0; requestAnimationFrame(frame); });

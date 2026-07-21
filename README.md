@@ -15,6 +15,7 @@ One self-contained page, zero external requests: fonts, world map, music, and FX
 - The Remote: a Popover-API VCR remote in the HUD (`RC` chip) — punch channels 1–7, transport keys, FX/FM, share-a-channel, and the cheat index
 - Tape Remaining: a zero-JS CSS scroll-driven reel gauge in the HUD — scroll position is tape position (`animation-timeline: scroll()`)
 - Eject Sequence: flipping to Side B performs a cross-document View Transition (with Speculation-Rules prerender so the cut is instant); Firefox just navigates
+- Side B cruise control: an obvious &#9654; Press Play on the Night Drive title card (plus a dash chip) — the deck drives the whole journey itself in ~90 seconds, radio on; touching anything hands the wheel straight back
 - A certain car that drives by now and then
 - Cheat code: the footer tells you; the Remote's CODES card tells you more
 
