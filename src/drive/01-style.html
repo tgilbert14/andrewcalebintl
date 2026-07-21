@@ -513,6 +513,20 @@ html.js .scene.center .tags { justify-content: center; }
   margin: 10px 0 8px;
   background: rgba(18,2,48,.55);
 }
+/* PRESS PLAY — the deck can run the tape itself (cruise) */
+.btn-play {
+  display: inline-flex; align-items: center; gap: 12px;
+  margin-top: 26px; padding: 13px 28px 10px;
+  cursor: pointer;
+  font-family: var(--font-osd); font-size: clamp(18px, 2.2vw, 22px);
+  letter-spacing: .18em; text-transform: uppercase;
+  color: var(--osd-amber); background: rgba(11,0,26,.55);
+  border: 1px solid rgba(255,204,0,.65);
+  transition: box-shadow .18s ease;
+}
+.btn-play:hover { box-shadow: 0 0 0 2px var(--osd-amber), 0 0 26px rgba(255,204,0,.4); }
+.btn-play .tri { color: var(--neon-pink, #ff00ff); animation: osdblink 1.6s steps(1) infinite; }
+html.rm .btn-play .tri { animation: none; }
 .scene .cue {
   font-family: var(--font-osd); font-size: 17px;
   white-space: nowrap;
@@ -523,7 +537,21 @@ html.js .scene.center .tags { justify-content: center; }
   background: none; padding: 0;
   animation: osdblink 1.6s steps(1) infinite;
 }
-html.rm .scene .cue { animation: none; }
+html.rm /* PRESS PLAY — the deck can run the tape itself (cruise) */
+.btn-play {
+  display: inline-flex; align-items: center; gap: 12px;
+  margin-top: 26px; padding: 13px 28px 10px;
+  cursor: pointer;
+  font-family: var(--font-osd); font-size: clamp(18px, 2.2vw, 22px);
+  letter-spacing: .18em; text-transform: uppercase;
+  color: var(--osd-amber); background: rgba(11,0,26,.55);
+  border: 1px solid rgba(255,204,0,.65);
+  transition: box-shadow .18s ease;
+}
+.btn-play:hover { box-shadow: 0 0 0 2px var(--osd-amber), 0 0 26px rgba(255,204,0,.4); }
+.btn-play .tri { color: var(--neon-pink, #ff00ff); animation: osdblink 1.6s steps(1) infinite; }
+html.rm .btn-play .tri { animation: none; }
+.scene .cue { animation: none; }
 
 .road-sign {
   display: inline-grid; grid-template-columns: auto 1fr; align-items: stretch;
@@ -738,9 +766,24 @@ html.rm .fx-osdflash.on { animation: none; }
    OS setting works even before/without JS. */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+  .btn-play .tri { animation: none; }
   .fx-flicker { animation: none; }
   .fx-drift { opacity: 0 !important; }
-  .scene .cue { animation: none; }
+  /* PRESS PLAY — the deck can run the tape itself (cruise) */
+.btn-play {
+  display: inline-flex; align-items: center; gap: 12px;
+  margin-top: 26px; padding: 13px 28px 10px;
+  cursor: pointer;
+  font-family: var(--font-osd); font-size: clamp(18px, 2.2vw, 22px);
+  letter-spacing: .18em; text-transform: uppercase;
+  color: var(--osd-amber); background: rgba(11,0,26,.55);
+  border: 1px solid rgba(255,204,0,.65);
+  transition: box-shadow .18s ease;
+}
+.btn-play:hover { box-shadow: 0 0 0 2px var(--osd-amber), 0 0 26px rgba(255,204,0,.4); }
+.btn-play .tri { color: var(--neon-pink, #ff00ff); animation: osdblink 1.6s steps(1) infinite; }
+html.rm .btn-play .tri { animation: none; }
+.scene .cue { animation: none; }
   .dash .audio-btn.on .livedot { animation: none; }
   .dash .audio-btn.pulse { animation: none; }
   .dash .audio-btn.armed { animation: none; }

@@ -71,3 +71,19 @@ requests. Sources live in `src/drive/`, and `node build.js` emits
   with `--enable-logging=stderr` to smoke-test the scheduler for exceptions.
 - `window.__ndState()` — engine state dump (ctx state, T, scene, lift, runout).
 - Konami code (or triple-tap the speedo) — TURBO.
+
+
+## Cruise (Press Play)
+
+The deck can run the tape itself: `#playCue` on the title card and the
+`#cruiseBtn` dash chip toggle a rAF loop that only ever writes
+`scrollTo()` — scroll stays the single source of truth, so bands,
+linger, music arming, and the capture rig are untouched. Pace: the full
+journey in ~85s of track (measured ~94s wall including the tail), which
+is ~12–14s of reading per band and ~25s across the finale linger.
+Engaging forces `scroll-behavior: auto` for the duration (per-frame
+scrollTo under CSS smooth scrolling self-cancels to zero movement — the
+trap), and pressing Play also starts the radio (real activation; a
+prior explicit FM-off wins). Any real input — wheel, touch, scroll
+keys, Escape, grabbing the scrollbar — disengages instantly; dash
+chips and the Play keys themselves don't count. Tab-hide disengages.

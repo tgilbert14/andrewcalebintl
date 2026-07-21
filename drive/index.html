@@ -533,6 +533,20 @@ html.js .scene.center .tags { justify-content: center; }
   margin: 10px 0 8px;
   background: rgba(18,2,48,.55);
 }
+/* PRESS PLAY — the deck can run the tape itself (cruise) */
+.btn-play {
+  display: inline-flex; align-items: center; gap: 12px;
+  margin-top: 26px; padding: 13px 28px 10px;
+  cursor: pointer;
+  font-family: var(--font-osd); font-size: clamp(18px, 2.2vw, 22px);
+  letter-spacing: .18em; text-transform: uppercase;
+  color: var(--osd-amber); background: rgba(11,0,26,.55);
+  border: 1px solid rgba(255,204,0,.65);
+  transition: box-shadow .18s ease;
+}
+.btn-play:hover { box-shadow: 0 0 0 2px var(--osd-amber), 0 0 26px rgba(255,204,0,.4); }
+.btn-play .tri { color: var(--neon-pink, #ff00ff); animation: osdblink 1.6s steps(1) infinite; }
+html.rm .btn-play .tri { animation: none; }
 .scene .cue {
   font-family: var(--font-osd); font-size: 17px;
   white-space: nowrap;
@@ -543,7 +557,21 @@ html.js .scene.center .tags { justify-content: center; }
   background: none; padding: 0;
   animation: osdblink 1.6s steps(1) infinite;
 }
-html.rm .scene .cue { animation: none; }
+html.rm /* PRESS PLAY — the deck can run the tape itself (cruise) */
+.btn-play {
+  display: inline-flex; align-items: center; gap: 12px;
+  margin-top: 26px; padding: 13px 28px 10px;
+  cursor: pointer;
+  font-family: var(--font-osd); font-size: clamp(18px, 2.2vw, 22px);
+  letter-spacing: .18em; text-transform: uppercase;
+  color: var(--osd-amber); background: rgba(11,0,26,.55);
+  border: 1px solid rgba(255,204,0,.65);
+  transition: box-shadow .18s ease;
+}
+.btn-play:hover { box-shadow: 0 0 0 2px var(--osd-amber), 0 0 26px rgba(255,204,0,.4); }
+.btn-play .tri { color: var(--neon-pink, #ff00ff); animation: osdblink 1.6s steps(1) infinite; }
+html.rm .btn-play .tri { animation: none; }
+.scene .cue { animation: none; }
 
 .road-sign {
   display: inline-grid; grid-template-columns: auto 1fr; align-items: stretch;
@@ -758,9 +786,24 @@ html.rm .fx-osdflash.on { animation: none; }
    OS setting works even before/without JS. */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+  .btn-play .tri { animation: none; }
   .fx-flicker { animation: none; }
   .fx-drift { opacity: 0 !important; }
-  .scene .cue { animation: none; }
+  /* PRESS PLAY — the deck can run the tape itself (cruise) */
+.btn-play {
+  display: inline-flex; align-items: center; gap: 12px;
+  margin-top: 26px; padding: 13px 28px 10px;
+  cursor: pointer;
+  font-family: var(--font-osd); font-size: clamp(18px, 2.2vw, 22px);
+  letter-spacing: .18em; text-transform: uppercase;
+  color: var(--osd-amber); background: rgba(11,0,26,.55);
+  border: 1px solid rgba(255,204,0,.65);
+  transition: box-shadow .18s ease;
+}
+.btn-play:hover { box-shadow: 0 0 0 2px var(--osd-amber), 0 0 26px rgba(255,204,0,.4); }
+.btn-play .tri { color: var(--neon-pink, #ff00ff); animation: osdblink 1.6s steps(1) infinite; }
+html.rm .btn-play .tri { animation: none; }
+.scene .cue { animation: none; }
   .dash .audio-btn.on .livedot { animation: none; }
   .dash .audio-btn.pulse { animation: none; }
   .dash .audio-btn.armed { animation: none; }
@@ -1000,7 +1043,10 @@ html.rm::view-transition-new(root) { animation: none; }
     <strong>WEST. BEFORE SUNRISE.</strong>
     <small>No address. No introduction. Just a signal leaving town.</small>
   </div>
-  <p class="cue" aria-hidden="true">&#9660; Scroll to shift into drive</p>
+  <button type="button" class="btn-play" id="playCue" aria-pressed="false" aria-label="Press play: the tape drives itself to the end">
+    <span class="tri" aria-hidden="true">&#9654;</span> Press Play &middot; Let It Drive
+  </button>
+  <p class="cue" aria-hidden="true">&#9660; or scroll to shift into drive</p>
 </section>
 
 <!-- ============ TRK 02 : THE CITY ============ -->
@@ -1085,6 +1131,7 @@ html.rm::view-transition-new(root) { animation: none; }
   </div>
   <div class="cluster">
     <span class="np" id="npTicker" hidden><span class="np-inner" id="npText"></span></span>
+    <button class="audio-btn" id="cruiseBtn" aria-pressed="false" aria-label="Auto drive: play the journey to the end">&#9654; Play</button>
     <button class="audio-btn" id="fxBtn" aria-pressed="false" aria-label="Toggle visual effects">FX [On]</button>
     <button class="audio-btn" id="audioBtn" aria-pressed="false" aria-label="Toggle radio: Night Drive FM, Skywave 99.9">FM 99.9 [Tune]</button>
   </div>
@@ -2665,6 +2712,85 @@ html.rm::view-transition-new(root) { animation: none; }
       se.scrollBehavior = '';
     }
   })();
+
+  /* ============================================================
+     CRUISE — press Play and the deck runs the tape itself.
+     Implementation law: cruise only writes scrollTo(); scroll stays
+     the single source of truth, so the whole engine (bands, linger,
+     music arming, capture rig) is untouched. Any real input — wheel,
+     touch, scroll keys, grabbing the scrollbar — hands the wheel
+     back instantly: the no-hijack law, inverted but intact.
+     The pace: the full journey in ~85s. Each band is ~12-14s of
+     reading time and the finale linger gets ~25s — enough to read
+     every card, never enough to drag.
+     ============================================================ */
+  var CRUISE_SECS = 85;
+  var cruising = false, cruiseLastT = 0, cruiseFloat = 0;
+  var playCue = $('#playCue'), cruiseBtn = $('#cruiseBtn');
+  function cruiseUI() {
+    if (cruiseBtn) {
+      cruiseBtn.innerHTML = cruising ? '&#9632; Cruise<span class="livedot"></span>' : '&#9654; Play';
+      cruiseBtn.classList.toggle('on', cruising);
+      cruiseBtn.setAttribute('aria-pressed', cruising ? 'true' : 'false');
+      cruiseBtn.setAttribute('aria-label', cruising
+        ? 'Stop auto drive' : 'Auto drive: play the journey to the end');
+    }
+    if (playCue) playCue.setAttribute('aria-pressed', cruising ? 'true' : 'false');
+  }
+  function cruiseFrame(now) {
+    if (!cruising) return;
+    var dt = clamp((now - cruiseLastT) / 1000, 0, 0.1);
+    cruiseLastT = now;
+    var max = document.documentElement.scrollHeight - innerHeight;
+    /* someone else moved the tape (anchor, restore) — re-sync, don't fight */
+    if (Math.abs(scrollY - cruiseFloat) > 4) cruiseFloat = scrollY;
+    cruiseFloat += ((trackH - vh) / CRUISE_SECS) * dt;
+    if (cruiseFloat >= max - 1) {
+      window.scrollTo(0, max);
+      setCruise(false);
+      return;
+    }
+    window.scrollTo(0, cruiseFloat);
+    requestAnimationFrame(cruiseFrame);
+  }
+  function setCruise(on) {
+    if (on === cruising) return;
+    cruising = on;
+    cruiseUI();
+    /* html { scroll-behavior: smooth } would turn every per-frame
+       scrollTo into a self-cancelling smooth animation (net zero
+       movement) — force instant stepping while the deck drives */
+    document.documentElement.style.scrollBehavior = on ? 'auto' : '';
+    if (on) {
+      cruiseFloat = scrollY;
+      /* pressing PLAY on a tape deck plays the sound too — a real
+         activation, so the resume is legal; prior explicit off wins */
+      if (audioWanted && !AE.on) setAudio(true, true);
+      requestAnimationFrame(function (t) { cruiseLastT = t; requestAnimationFrame(cruiseFrame); });
+    }
+  }
+  if (playCue) playCue.addEventListener('click', function () { setCruise(!cruising); });
+  if (cruiseBtn) cruiseBtn.addEventListener('click', function () { setCruise(!cruising); });
+  /* taking the wheel disengages instantly */
+  addEventListener('wheel', function () { setCruise(false); }, { passive: true });
+  addEventListener('touchstart', function () { setCruise(false); }, { passive: true });
+  addEventListener('pointerdown', function (e) {
+    /* dash controls (FM/FX) and the play keys themselves don't count */
+    if (e.target && e.target.closest && e.target.closest('.dash, .btn-play')) return;
+    setCruise(false);
+  }, true);
+  var CRUISE_KEYS = { 'ArrowDown': 1, 'ArrowUp': 1, 'PageDown': 1, 'PageUp': 1, ' ': 1, 'Spacebar': 1, 'Home': 1, 'End': 1, 'Escape': 1 };
+  addEventListener('keydown', function (e) {
+    if (!cruising) return;
+    if (e.target && e.target.closest && e.target.closest('button, a, input, textarea, select')) {
+      if (e.key !== 'Escape') return;
+    }
+    if (CRUISE_KEYS[e.key]) setCruise(false);
+  }, true);
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) setCruise(false);
+  });
+
   read();
   curT = targetT;
   requestAnimationFrame(function (t0) { lastNow = t0; requestAnimationFrame(frame); });
